@@ -1,4 +1,4 @@
-use crate::agent::AgentSession;
+use crate::agent::{AgentEvent, AgentSession};
 use crate::config::{ApprovalPolicy, RobConfig};
 use anyhow::Result;
 use crossterm::{
@@ -14,6 +14,7 @@ use ratatui::{
     widgets::{Block, Borders, Paragraph, Wrap},
     Terminal,
 };
+use serde_json::Value;
 use std::{io, time::Duration};
 
 pub async fn run_tui(
@@ -59,12 +60,40 @@ impl TuiApp {
         };
 
         for message in session.transcript() {
-            if message.role == "system" || message.role == "tool" {
+            if message.role == "system" {
                 continue;
             }
-            if let Some(content) = &message.content {
-                if !content.trim().is_empty() {
-                    app.push_message(&message.role, content);
+
+            match message.role.as_str() {
+                "assistant" => {
+                    if let Some(content) = &message.content {
+                        if !content.trim().is_empty() {
+                            app.push_message(&message.role, content);
+                        }
+                    }
+                    if let Some(tool_calls) = &message.tool_calls {
+                        for call in tool_calls {
+                            let arguments = serde_json::from_str(&call.function.arguments)
+                                .unwrap_or_else(|_| Value::Object(Default::default()));
+                            app.push_tool_started(&call.id, &call.function.name, &arguments);
+                        }
+                    }
+                }
+                "tool" => {
+                    let name = message.name.as_deref().unwrap_or("tool");
+                    let id = message.tool_call_id.as_deref().unwrap_or("tool_call");
+                    app.push_tool_completed(
+                        id,
+                        name,
+                        message.content.as_deref().unwrap_or_default(),
+                    );
+                }
+                _ => {
+                    if let Some(content) = &message.content {
+                        if !content.trim().is_empty() {
+                            app.push_message(&message.role, content);
+                        }
+                    }
                 }
             }
         }
@@ -95,6 +124,14 @@ impl TuiApp {
         content.push_str(delta);
     }
 
+    fn commit_assistant_stream(&mut self) {
+        if let Some(content) = self.streaming_assistant.take() {
+            if !content.trim().is_empty() {
+                self.push_message("assistant", &content);
+            }
+        }
+    }
+
     fn finish_assistant_stream(&mut self, fallback: &str) {
         let content = self
             .streaming_assistant
@@ -105,6 +142,103 @@ impl TuiApp {
             self.push_system("Model returned an empty response.");
         } else {
             self.push_message("assistant", &content);
+        }
+    }
+
+    fn push_tool_event(
+        &mut self,
+        status: ToolStatus,
+        id: &str,
+        name: &str,
+        detail: Option<String>,
+    ) {
+        self.commit_assistant_stream();
+
+        let (status_text, color) = status.display();
+        self.lines.push(Line::from(vec![
+            Span::styled(
+                "tool",
+                Style::default()
+                    .fg(Color::Magenta)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::raw("  "),
+            Span::styled(
+                status_text,
+                Style::default().fg(color).add_modifier(Modifier::BOLD),
+            ),
+            Span::raw(" "),
+            Span::styled(name.to_string(), Style::default().fg(Color::White)),
+            Span::raw(format!("  #{id}")),
+        ]));
+
+        if let Some(detail) = detail.filter(|detail| !detail.trim().is_empty()) {
+            self.lines.push(Line::from(vec![
+                Span::raw("      "),
+                Span::styled(detail, Style::default().fg(Color::DarkGray)),
+            ]));
+        }
+
+        self.lines.push(Line::raw(""));
+    }
+
+    fn push_tool_started(&mut self, id: &str, name: &str, arguments: &Value) {
+        self.push_tool_event(
+            ToolStatus::Calling,
+            id,
+            name,
+            Some(format!("args {}", format_json(arguments))),
+        );
+    }
+
+    fn push_tool_completed(&mut self, id: &str, name: &str, output: &str) {
+        self.push_tool_event(
+            ToolStatus::Called,
+            id,
+            name,
+            Some(format!("output {}", summarize_tool_output(output))),
+        );
+    }
+
+    fn push_tool_failed(&mut self, id: &str, name: &str, error: &str) {
+        self.push_tool_event(
+            ToolStatus::Failed,
+            id,
+            name,
+            Some(format!("error {}", summarize_tool_output(error))),
+        );
+    }
+
+    fn push_tool_denied(&mut self, id: &str, name: &str) {
+        self.push_tool_event(ToolStatus::Denied, id, name, None);
+    }
+
+    fn push_agent_event(&mut self, event: AgentEvent) {
+        match event {
+            AgentEvent::AssistantDelta(delta) => {
+                self.status = "Streaming model response...".to_string();
+                self.push_assistant_delta(&delta);
+            }
+            AgentEvent::ToolCallStarted {
+                id,
+                name,
+                arguments,
+            } => {
+                self.status = format!("Calling tool {name}...");
+                self.push_tool_started(&id, &name, &arguments);
+            }
+            AgentEvent::ToolCallCompleted { id, name, output } => {
+                self.status = format!("Tool {name} completed");
+                self.push_tool_completed(&id, &name, &output);
+            }
+            AgentEvent::ToolCallFailed { id, name, error } => {
+                self.status = format!("Tool {name} failed");
+                self.push_tool_failed(&id, &name, &error);
+            }
+            AgentEvent::ToolCallDenied { id, name } => {
+                self.status = format!("Tool {name} denied");
+                self.push_tool_denied(&id, &name);
+            }
         }
     }
 
@@ -125,6 +259,24 @@ impl TuiApp {
     }
 }
 
+enum ToolStatus {
+    Calling,
+    Called,
+    Failed,
+    Denied,
+}
+
+impl ToolStatus {
+    fn display(&self) -> (&'static str, Color) {
+        match self {
+            Self::Calling => ("Calling", Color::Blue),
+            Self::Called => ("Called", Color::Green),
+            Self::Failed => ("Failed", Color::Red),
+            Self::Denied => ("Denied", Color::Yellow),
+        }
+    }
+}
+
 fn message_line(role: &str, content: &str) -> Line<'static> {
     let color = match role {
         "user" => Color::Cyan,
@@ -139,6 +291,37 @@ fn message_line(role: &str, content: &str) -> Line<'static> {
         Span::raw("  "),
         Span::raw(content.to_string()),
     ])
+}
+
+fn format_json(value: &Value) -> String {
+    truncate_chars(
+        &serde_json::to_string(value).unwrap_or_else(|_| value.to_string()),
+        240,
+    )
+}
+
+fn summarize_tool_output(output: &str) -> String {
+    let summary = output
+        .lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty())
+        .take(3)
+        .collect::<Vec<_>>()
+        .join(" | ");
+
+    if summary.is_empty() {
+        "(empty)".to_string()
+    } else {
+        truncate_chars(&summary, 240)
+    }
+}
+
+fn truncate_chars(value: &str, max_chars: usize) -> String {
+    let mut truncated = value.chars().take(max_chars).collect::<String>();
+    if value.chars().count() > max_chars {
+        truncated.push_str("...");
+    }
+    truncated
 }
 
 async fn run_loop(
@@ -197,8 +380,8 @@ async fn run_loop(
                 draw_ui(terminal, app)?;
 
                 match session
-                    .send_user_message_streaming(&input, |delta| {
-                        app.push_assistant_delta(delta);
+                    .send_user_message_events(&input, |event| {
+                        app.push_agent_event(event);
                         draw_ui(terminal, app)?;
                         Ok(())
                     })

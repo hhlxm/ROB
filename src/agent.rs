@@ -14,6 +14,30 @@ use uuid::Uuid;
 
 const MAX_TOOL_ROUNDS: usize = 6;
 
+#[derive(Debug, Clone)]
+pub enum AgentEvent {
+    AssistantDelta(String),
+    ToolCallStarted {
+        id: String,
+        name: String,
+        arguments: Value,
+    },
+    ToolCallCompleted {
+        id: String,
+        name: String,
+        output: String,
+    },
+    ToolCallFailed {
+        id: String,
+        name: String,
+        error: String,
+    },
+    ToolCallDenied {
+        id: String,
+        name: String,
+    },
+}
+
 pub struct AgentSession {
     id: String,
     config: RobConfig,
@@ -79,14 +103,33 @@ impl AgentSession {
     where
         F: FnMut(&str) -> Result<()>,
     {
+        self.send_user_message_events(input, |event| {
+            if let AgentEvent::AssistantDelta(delta) = event {
+                on_delta(&delta)?;
+            }
+            Ok(())
+        })
+        .await
+    }
+
+    pub async fn send_user_message_events<F>(
+        &mut self,
+        input: &str,
+        mut on_event: F,
+    ) -> Result<String>
+    where
+        F: FnMut(AgentEvent) -> Result<()>,
+    {
         self.messages.push(user_message(input));
         self.persist()?;
 
         for _ in 0..MAX_TOOL_ROUNDS {
             let profile = self.config.active_profile()?;
             let tools = tool_specs();
-            let model_message =
-                chat_completion_stream(profile, &self.messages, &tools, &mut on_delta).await?;
+            let model_message = chat_completion_stream(profile, &self.messages, &tools, |delta| {
+                on_event(AgentEvent::AssistantDelta(delta.to_string()))
+            })
+            .await?;
             let tool_calls = model_message.tool_calls.clone().unwrap_or_default();
             let assistant = assistant_message(model_message);
             let answer = content_as_text(assistant.content.clone());
@@ -99,12 +142,36 @@ impl AgentSession {
 
             for call in tool_calls {
                 let args = parse_tool_arguments(&call.function.arguments);
+                on_event(AgentEvent::ToolCallStarted {
+                    id: call.id.clone(),
+                    name: call.function.name.clone(),
+                    arguments: args.clone(),
+                })?;
                 let output = if self.approve_tool(&call.function.name, &args)? {
                     match run_tool(&call.function.name, args).await {
-                        Ok(output) => output,
-                        Err(error) => format!("tool error: {error:#}"),
+                        Ok(output) => {
+                            on_event(AgentEvent::ToolCallCompleted {
+                                id: call.id.clone(),
+                                name: call.function.name.clone(),
+                                output: output.clone(),
+                            })?;
+                            output
+                        }
+                        Err(error) => {
+                            let output = format!("tool error: {error:#}");
+                            on_event(AgentEvent::ToolCallFailed {
+                                id: call.id.clone(),
+                                name: call.function.name.clone(),
+                                error: output.clone(),
+                            })?;
+                            output
+                        }
                     }
                 } else {
+                    on_event(AgentEvent::ToolCallDenied {
+                        id: call.id.clone(),
+                        name: call.function.name.clone(),
+                    })?;
                     "tool denied by approval policy".to_string()
                 };
                 self.messages
