@@ -101,6 +101,35 @@ pub async fn run_tool(name: &str, args: Value) -> Result<String> {
     }
 }
 
+pub fn tool_context_prompt(specs: &[ToolSpec]) -> String {
+    let mut prompt = String::from(
+        "Tool usage context for this turn:\n\
+- Use only tools provided in the current `tools` request field.\n\
+- Tool arguments must strictly match each tool JSON schema; include every required field.\n\
+- Prefer specialized tools before `shell_exec`: use `pwd`, `list_dir`, `read_file`, or `search_text` when they fit.\n\
+- Use at most one tool call per model round unless calls are independent.\n\
+- After a tool result, inspect it before deciding whether another tool is needed.\n\
+- For `shell_exec`, always provide both `command` and `args`; use `args: []` when there are no arguments. Example: {\"command\":\"uname\",\"args\":[\"-a\"],\"timeout_ms\":3000}.\n\n\
+Available tools:\n",
+    );
+
+    for spec in specs {
+        prompt.push_str("- `");
+        prompt.push_str(&spec.function.name);
+        prompt.push_str("`: ");
+        prompt.push_str(&spec.function.description);
+        let required = required_fields(&spec.function.parameters);
+        if !required.is_empty() {
+            prompt.push_str(" Required: ");
+            prompt.push_str(&required.join(", "));
+            prompt.push('.');
+        }
+        prompt.push('\n');
+    }
+
+    prompt
+}
+
 fn tool(name: &str, description: &str, parameters: Value) -> ToolSpec {
     ToolSpec {
         tool_type: "function".to_string(),
@@ -110,6 +139,17 @@ fn tool(name: &str, description: &str, parameters: Value) -> ToolSpec {
             parameters,
         },
     }
+}
+
+fn required_fields(parameters: &Value) -> Vec<String> {
+    parameters
+        .get("required")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter_map(Value::as_str)
+        .map(ToString::to_string)
+        .collect()
 }
 
 fn list_dir(args: Value) -> Result<String> {
@@ -328,6 +368,16 @@ mod tests {
 
         assert!(required.iter().any(|value| value == "command"));
         assert!(required.iter().any(|value| value == "args"));
+    }
+
+    #[test]
+    fn tool_context_prompt_includes_schema_guidance() {
+        let prompt = tool_context_prompt(&tool_specs());
+
+        assert!(prompt.contains("Tool arguments must strictly match"));
+        assert!(prompt.contains("`shell_exec`"));
+        assert!(prompt.contains("Required: command, args"));
+        assert!(prompt.contains(r#""command":"uname""#));
     }
 
     #[tokio::test]

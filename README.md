@@ -184,6 +184,8 @@ cargo run -- tools run shell_exec '{"command":"uname","args":["-s"]}'
 pwd, ls, cat, head, tail, wc, rg, find, date, uname, whoami, df, du, ps, env
 ```
 
+每次请求模型前，ROB 会像 OpenOmniBot 一样把工具使用规则和当前工具清单动态注入到运行上下文中，同时仍通过 OpenAI-compatible `tools` 字段传递完整 schema。这个运行上下文不会写入 session 历史。
+
 ## 工具审批策略
 
 默认策略是 `auto`，表示模型请求的 allowlisted 工具会自动执行。
@@ -263,11 +265,12 @@ src/state.rs   会话保存、读取、列表和 state 目录管理。
 2. `config.rs` 读取 active provider。
 3. `agent.rs` 创建或恢复 `AgentSession`。
 4. `context.rs` 根据估算 token 阈值构造运行上下文，必要时把较早消息压缩成摘要。
-5. 用户消息进入 `llm.rs` 的 chat-completions 请求，附带 reasoning/thinking 控制参数。
-6. `llm.rs` 按 SSE `data:` chunk 解析流式输出、reasoning 内容、usage 和 tool calls。
-7. 如果模型返回 tool calls，`agent.rs` 先追加 assistant tool_call 消息，再根据审批策略调用 `tools.rs`。
-8. 每个 tool 结果都会追加为 tool 消息并持久化，然后继续下一轮模型请求，直到模型返回最终回答。
-9. 每段 user / assistant / tool 消息都保存到 `state.rs` 管理的完整 session 文件。
+5. `tools.rs` 生成工具使用规则和工具清单，并作为运行时 system context 注入本轮请求。
+6. 用户消息进入 `llm.rs` 的 chat-completions 请求，附带 reasoning/thinking 控制参数和完整 tool schema。
+7. `llm.rs` 按 SSE `data:` chunk 解析流式输出、reasoning 内容、usage 和 tool calls。
+8. 如果模型返回 tool calls，`agent.rs` 先追加 assistant tool_call 消息，再根据审批策略调用 `tools.rs`。
+9. 每个 tool 结果都会追加为 tool 消息并持久化，然后继续下一轮模型请求，直到模型返回最终回答。
+10. 每段 user / assistant / tool 消息都保存到 `state.rs` 管理的完整 session 文件。
 
 ## 开发指南
 

@@ -1,4 +1,4 @@
-use crate::llm::{ChatMessage, ToolCall};
+use crate::llm::{system_text_message, ChatMessage, ToolCall};
 
 const DEFAULT_CONTEXT_TOKEN_THRESHOLD: usize = 32_000;
 const DEFAULT_CONTEXT_RECENT_MESSAGES: usize = 12;
@@ -75,6 +75,28 @@ pub fn prepare_context(messages: &[ChatMessage], config: &ContextWindowConfig) -
         estimated_tokens,
         compacted: true,
     }
+}
+
+pub fn inject_runtime_context(messages: &[ChatMessage], runtime_context: &str) -> Vec<ChatMessage> {
+    let context = runtime_context.trim();
+    if context.is_empty() {
+        return messages.to_vec();
+    }
+
+    let mut prepared = Vec::with_capacity(messages.len() + 1);
+    if let Some(system) = messages
+        .first()
+        .filter(|message| message.role == "system")
+        .cloned()
+    {
+        prepared.push(system);
+        prepared.push(system_text_message(context));
+        prepared.extend_from_slice(&messages[1..]);
+    } else {
+        prepared.push(system_text_message(context));
+        prepared.extend_from_slice(messages);
+    }
+    prepared
 }
 
 pub fn estimate_messages_tokens(messages: &[ChatMessage]) -> usize {
@@ -259,5 +281,22 @@ mod tests {
         assert_eq!(prepared.messages[2].role, "assistant");
         assert!(prepared.messages[2].tool_calls.is_some());
         assert_eq!(prepared.messages[3].role, "tool");
+    }
+
+    #[test]
+    fn inject_runtime_context_keeps_primary_system_first() {
+        let messages = vec![system_message(), user_message("hello")];
+
+        let prepared = inject_runtime_context(&messages, "runtime tools");
+
+        assert_eq!(prepared[0].role, "system");
+        assert!(prepared[0]
+            .content
+            .as_deref()
+            .unwrap()
+            .contains("You are ROB"));
+        assert_eq!(prepared[1].role, "system");
+        assert_eq!(prepared[1].content.as_deref(), Some("runtime tools"));
+        assert_eq!(prepared[2].role, "user");
     }
 }

@@ -223,14 +223,17 @@ impl ReasoningEffort {
 }
 
 pub fn system_message() -> ChatMessage {
+    system_text_message(
+        "You are ROB, a Linux-native CLI agent migrated from OpenOmniBot concepts. \
+Use tools when they help inspect the local Linux environment. Keep answers concise. \
+When using shell_exec, pass a command and argv array; never assume shell expansion.",
+    )
+}
+
+pub fn system_text_message(content: &str) -> ChatMessage {
     ChatMessage {
         role: "system".to_string(),
-        content: Some(
-            "You are ROB, a Linux-native CLI agent migrated from OpenOmniBot concepts. \
-Use tools when they help inspect the local Linux environment. Keep answers concise. \
-When using shell_exec, pass a command and argv array; never assume shell expansion."
-                .to_string(),
-        ),
+        content: Some(content.to_string()),
         reasoning_content: None,
         tool_calls: None,
         tool_call_id: None,

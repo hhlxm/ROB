@@ -1,11 +1,11 @@
 use crate::config::{ApprovalPolicy, RobConfig};
-use crate::context::{prepare_context, ContextWindowConfig};
+use crate::context::{inject_runtime_context, prepare_context, ContextWindowConfig};
 use crate::llm::{
     assistant_message, assistant_text_message, chat_completion_stream, content_as_text,
     parse_tool_arguments, system_message, tool_message, user_message, ChatMessage, ToolCall,
 };
 use crate::state;
-use crate::tools::{run_tool, tool_specs};
+use crate::tools::{run_tool, tool_context_prompt, tool_specs};
 use anyhow::Result;
 use rustyline::error::ReadlineError;
 use rustyline::DefaultEditor;
@@ -142,11 +142,14 @@ impl AgentSession {
         for round in 0..MAX_TOOL_ROUNDS {
             let profile = self.config.active_profile()?;
             let tools = tool_specs();
+            let tool_context = tool_context_prompt(&tools);
             let context_config = ContextWindowConfig {
                 token_threshold: self.config.context.token_threshold,
                 recent_messages: self.config.context.recent_messages,
             };
             let prepared_context = prepare_context(&self.messages, &context_config);
+            let request_messages =
+                inject_runtime_context(&prepared_context.messages, &tool_context);
             on_event(AgentEvent::ContextWindow {
                 estimated_tokens: prepared_context.estimated_tokens,
                 threshold: context_config.token_threshold,
@@ -154,7 +157,7 @@ impl AgentSession {
             })?;
             let model_message = chat_completion_stream(
                 profile,
-                &prepared_context.messages,
+                &request_messages,
                 &tools,
                 self.config.reasoning.effort,
                 |delta| on_event(AgentEvent::AssistantDelta(delta.to_string())),
