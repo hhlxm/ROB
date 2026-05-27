@@ -41,6 +41,7 @@ struct ChatCompletionRequest<'a> {
     tools: &'a [ToolSpec],
     #[serde(skip_serializing_if = "Option::is_none")]
     tool_choice: Option<&'a str>,
+    parallel_tool_calls: bool,
     temperature: f32,
     stream: bool,
 }
@@ -101,6 +102,7 @@ where
         messages,
         tools,
         tool_choice: None,
+        parallel_tool_calls: false,
         temperature: 0.2,
         stream: true,
     };
@@ -191,6 +193,16 @@ pub fn assistant_message(message: ChatMessage) -> ChatMessage {
         role: "assistant".to_string(),
         content: message.content,
         tool_calls: message.tool_calls,
+        tool_call_id: None,
+        name: None,
+    }
+}
+
+pub fn assistant_text_message(content: &str) -> ChatMessage {
+    ChatMessage {
+        role: "assistant".to_string(),
+        content: Some(content.to_string()),
+        tool_calls: None,
         tool_call_id: None,
         name: None,
     }

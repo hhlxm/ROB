@@ -82,11 +82,7 @@ impl TuiApp {
                 "tool" => {
                     let name = message.name.as_deref().unwrap_or("tool");
                     let id = message.tool_call_id.as_deref().unwrap_or("tool_call");
-                    app.push_tool_completed(
-                        id,
-                        name,
-                        message.content.as_deref().unwrap_or_default(),
-                    );
+                    app.push_tool_result(id, name, message.content.as_deref().unwrap_or_default());
                 }
                 _ => {
                     if let Some(content) = &message.content {
@@ -200,6 +196,17 @@ impl TuiApp {
         );
     }
 
+    fn push_tool_result(&mut self, id: &str, name: &str, output: &str) {
+        match classify_tool_output(output) {
+            ToolStatus::Called => self.push_tool_completed(id, name, output),
+            ToolStatus::Failed => self.push_tool_failed(id, name, output),
+            ToolStatus::Denied => self.push_tool_denied(id, name),
+            ToolStatus::Calling => {
+                self.push_tool_started(id, name, &Value::Object(Default::default()))
+            }
+        }
+    }
+
     fn push_tool_failed(&mut self, id: &str, name: &str, error: &str) {
         self.push_tool_event(
             ToolStatus::Failed,
@@ -264,6 +271,17 @@ enum ToolStatus {
     Called,
     Failed,
     Denied,
+}
+
+fn classify_tool_output(output: &str) -> ToolStatus {
+    let normalized = output.trim();
+    if normalized == "tool denied by approval policy" {
+        ToolStatus::Denied
+    } else if normalized.starts_with("tool error:") {
+        ToolStatus::Failed
+    } else {
+        ToolStatus::Called
+    }
 }
 
 impl ToolStatus {

@@ -253,9 +253,9 @@ src/state.rs   会话保存、读取、列表和 state 目录管理。
 3. `agent.rs` 创建或恢复 `AgentSession`。
 4. 用户消息进入 `llm.rs` 的 chat-completions 请求。
 5. `llm.rs` 按 SSE `data:` chunk 解析流式输出，并实时回调 UI。
-6. 如果模型返回 tool calls，`agent.rs` 根据审批策略调用 `tools.rs`。
-7. tool 结果写回模型上下文，直到模型返回最终回答。
-8. 每轮消息保存到 `state.rs` 管理的 session 文件。
+6. 如果模型返回 tool calls，`agent.rs` 先追加 assistant tool_call 消息，再根据审批策略调用 `tools.rs`。
+7. 每个 tool 结果都会追加为 tool 消息并持久化，然后继续下一轮模型请求，直到模型返回最终回答。
+8. 每段 user / assistant / tool 消息都保存到 `state.rs` 管理的 session 文件。
 
 ## 开发指南
 

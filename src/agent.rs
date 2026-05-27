@@ -1,7 +1,7 @@
 use crate::config::{ApprovalPolicy, RobConfig};
 use crate::llm::{
-    assistant_message, chat_completion_stream, content_as_text, parse_tool_arguments,
-    system_message, tool_message, user_message, ChatMessage,
+    assistant_message, assistant_text_message, chat_completion_stream, content_as_text,
+    parse_tool_arguments, system_message, tool_message, user_message, ChatMessage, ToolCall,
 };
 use crate::state;
 use crate::tools::{run_tool, tool_specs};
@@ -13,6 +13,8 @@ use std::io::{self, Write};
 use uuid::Uuid;
 
 const MAX_TOOL_ROUNDS: usize = 6;
+const TOOL_DENIED_MESSAGE: &str = "tool denied by approval policy";
+const TOOL_ROUND_LIMIT_MESSAGE: &str = "Stopped after reaching the tool-call round limit.";
 
 #[derive(Debug, Clone)]
 pub enum AgentEvent {
@@ -123,7 +125,7 @@ impl AgentSession {
         self.messages.push(user_message(input));
         self.persist()?;
 
-        for _ in 0..MAX_TOOL_ROUNDS {
+        for round in 0..MAX_TOOL_ROUNDS {
             let profile = self.config.active_profile()?;
             let tools = tool_specs();
             let model_message = chat_completion_stream(profile, &self.messages, &tools, |delta| {
@@ -134,54 +136,28 @@ impl AgentSession {
             let assistant = assistant_message(model_message);
             let answer = content_as_text(assistant.content.clone());
             self.messages.push(assistant);
+            self.persist()?;
 
             if tool_calls.is_empty() {
-                self.persist()?;
                 return Ok(answer);
             }
 
             for call in tool_calls {
-                let args = parse_tool_arguments(&call.function.arguments);
-                on_event(AgentEvent::ToolCallStarted {
-                    id: call.id.clone(),
-                    name: call.function.name.clone(),
-                    arguments: args.clone(),
-                })?;
-                let output = if self.approve_tool(&call.function.name, &args)? {
-                    match run_tool(&call.function.name, args).await {
-                        Ok(output) => {
-                            on_event(AgentEvent::ToolCallCompleted {
-                                id: call.id.clone(),
-                                name: call.function.name.clone(),
-                                output: output.clone(),
-                            })?;
-                            output
-                        }
-                        Err(error) => {
-                            let output = format!("tool error: {error:#}");
-                            on_event(AgentEvent::ToolCallFailed {
-                                id: call.id.clone(),
-                                name: call.function.name.clone(),
-                                error: output.clone(),
-                            })?;
-                            output
-                        }
-                    }
-                } else {
-                    on_event(AgentEvent::ToolCallDenied {
-                        id: call.id.clone(),
-                        name: call.function.name.clone(),
-                    })?;
-                    "tool denied by approval policy".to_string()
-                };
+                self.run_and_append_tool_call(call, &mut on_event).await?;
+            }
+
+            if round + 1 == MAX_TOOL_ROUNDS {
                 self.messages
-                    .push(tool_message(call.id, call.function.name, output));
+                    .push(assistant_text_message(TOOL_ROUND_LIMIT_MESSAGE));
                 self.persist()?;
+                on_event(AgentEvent::AssistantDelta(
+                    TOOL_ROUND_LIMIT_MESSAGE.to_string(),
+                ))?;
+                return Ok(TOOL_ROUND_LIMIT_MESSAGE.to_string());
             }
         }
 
-        self.persist()?;
-        Ok("Stopped after reaching the tool-call round limit.".to_string())
+        unreachable!("tool-call loop returns when the round limit is reached")
     }
 
     pub fn id(&self) -> &str {
@@ -216,6 +192,69 @@ impl AgentSession {
 
     fn persist(&self) -> Result<()> {
         state::save_session(&self.id, &self.messages)
+    }
+
+    async fn run_and_append_tool_call<F>(&mut self, call: ToolCall, on_event: &mut F) -> Result<()>
+    where
+        F: FnMut(AgentEvent) -> Result<()>,
+    {
+        let args = parse_tool_arguments(&call.function.arguments);
+        on_event(AgentEvent::ToolCallStarted {
+            id: call.id.clone(),
+            name: call.function.name.clone(),
+            arguments: args.clone(),
+        })?;
+
+        let outcome = if self.approve_tool(&call.function.name, &args)? {
+            match run_tool(&call.function.name, args).await {
+                Ok(output) => ToolOutcome::Completed(output),
+                Err(error) => ToolOutcome::Failed(format!("tool error: {error:#}")),
+            }
+        } else {
+            ToolOutcome::Denied
+        };
+
+        let output = outcome.output().to_string();
+        self.messages.push(tool_message(
+            call.id.clone(),
+            call.function.name.clone(),
+            output.clone(),
+        ));
+        self.persist()?;
+
+        match outcome {
+            ToolOutcome::Completed(_) => on_event(AgentEvent::ToolCallCompleted {
+                id: call.id,
+                name: call.function.name,
+                output,
+            })?,
+            ToolOutcome::Failed(_) => on_event(AgentEvent::ToolCallFailed {
+                id: call.id,
+                name: call.function.name,
+                error: output,
+            })?,
+            ToolOutcome::Denied => on_event(AgentEvent::ToolCallDenied {
+                id: call.id,
+                name: call.function.name,
+            })?,
+        }
+
+        Ok(())
+    }
+}
+
+enum ToolOutcome {
+    Completed(String),
+    Failed(String),
+    Denied,
+}
+
+impl ToolOutcome {
+    fn output(&self) -> &str {
+        match self {
+            Self::Completed(output) | Self::Failed(output) => output,
+            Self::Denied => TOOL_DENIED_MESSAGE,
+        }
     }
 }
 
