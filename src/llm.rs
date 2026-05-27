@@ -77,47 +77,11 @@ struct ChatCompletionThinking {
     thinking_type: String,
 }
 
-#[derive(Debug, Deserialize)]
-struct ChatCompletionStreamChunk {
-    choices: Vec<ChatStreamChoice>,
-    usage: Option<Usage>,
-}
-
-#[derive(Debug, Deserialize)]
-struct ChatStreamChoice {
-    delta: ChatStreamDelta,
-}
-
-#[derive(Debug, Deserialize)]
-struct ChatStreamDelta {
-    content: Option<String>,
-    reasoning_content: Option<String>,
-    reasoning: Option<String>,
-    thinking: Option<String>,
-    #[serde(default)]
-    tool_calls: Vec<ToolCallDelta>,
-}
-
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Usage {
     pub prompt_tokens: Option<usize>,
     pub completion_tokens: Option<usize>,
     pub total_tokens: Option<usize>,
-}
-
-#[derive(Debug, Deserialize)]
-struct ToolCallDelta {
-    index: usize,
-    id: Option<String>,
-    #[serde(rename = "type")]
-    call_type: Option<String>,
-    function: Option<ToolCallFunctionDelta>,
-}
-
-#[derive(Debug, Deserialize)]
-struct ToolCallFunctionDelta {
-    name: Option<String>,
-    arguments: Option<String>,
 }
 
 #[derive(Debug, Default)]
@@ -126,6 +90,12 @@ struct ToolCallBuilder {
     call_type: Option<String>,
     name: String,
     arguments: String,
+}
+
+#[derive(Debug, Clone, Copy)]
+enum ToolCallMergeMode {
+    Delta,
+    Full,
 }
 
 pub async fn chat_completion_stream<F>(
@@ -362,50 +332,376 @@ where
         return Ok(());
     }
 
-    let chunk: ChatCompletionStreamChunk = serde_json::from_str(data)
-        .with_context(|| format!("failed to decode stream chunk: {data}"))?;
-    if chunk.usage.is_some() {
-        *usage = chunk.usage;
-    }
-
-    for choice in chunk.choices {
-        if let Some(delta) = choice.delta.content {
-            if !delta.is_empty() {
-                content.push_str(&delta);
-                on_delta(&delta)?;
-            }
-        }
-        for delta in [
-            choice.delta.reasoning_content,
-            choice.delta.reasoning,
-            choice.delta.thinking,
-        ]
-        .into_iter()
-        .flatten()
+    for chunk in parse_stream_values(data)? {
+        if let Some(next_usage) = chunk
+            .get("usage")
+            .filter(|value| !value.is_null())
+            .and_then(|value| serde_json::from_value(value.clone()).ok())
         {
-            reasoning.push_str(&delta);
+            *usage = Some(next_usage);
         }
 
-        for delta in choice.delta.tool_calls {
-            let builder = tool_calls.entry(delta.index).or_default();
-            if let Some(id) = delta.id {
-                builder.id = Some(id);
+        if let Some(choices) = chunk.get("choices").and_then(Value::as_array) {
+            for (choice_index, choice) in choices.iter().enumerate() {
+                consume_choice(
+                    choice_index,
+                    choice,
+                    content,
+                    reasoning,
+                    tool_calls,
+                    on_delta,
+                )?;
             }
-            if let Some(call_type) = delta.call_type {
-                builder.call_type = Some(call_type);
-            }
-            if let Some(function) = delta.function {
-                if let Some(name) = function.name {
-                    builder.name.push_str(&name);
-                }
-                if let Some(arguments) = function.arguments {
-                    builder.arguments.push_str(&arguments);
-                }
-            }
+        } else {
+            consume_top_level_chunk(&chunk, content, reasoning, tool_calls, on_delta)?;
         }
     }
 
     Ok(())
+}
+
+fn parse_stream_values(data: &str) -> Result<Vec<Value>> {
+    if let Ok(value) = serde_json::from_str(data) {
+        return Ok(vec![value]);
+    }
+
+    let chunks = split_composite_json_values(data);
+    if chunks.len() <= 1 {
+        let _: Value = serde_json::from_str(data)
+            .with_context(|| format!("failed to decode stream chunk: {data}"))?;
+    }
+
+    chunks
+        .into_iter()
+        .map(|chunk| {
+            serde_json::from_str(&chunk)
+                .with_context(|| format!("failed to decode stream chunk: {chunk}"))
+        })
+        .collect()
+}
+
+fn split_composite_json_values(data: &str) -> Vec<String> {
+    let mut values = Vec::new();
+    let mut start = None;
+    let mut depth = 0usize;
+    let mut in_string = false;
+    let mut escaped = false;
+
+    for (index, ch) in data.char_indices() {
+        if in_string {
+            if escaped {
+                escaped = false;
+            } else if ch == '\\' {
+                escaped = true;
+            } else if ch == '"' {
+                in_string = false;
+            }
+            continue;
+        }
+
+        match ch {
+            '"' => in_string = true,
+            '{' | '[' => {
+                if depth == 0 {
+                    start = Some(index);
+                }
+                depth += 1;
+            }
+            '}' | ']' if depth > 0 => {
+                depth -= 1;
+                if depth == 0 {
+                    if let Some(start_index) = start.take() {
+                        let end = index + ch.len_utf8();
+                        values.push(data[start_index..end].trim().to_string());
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+
+    values
+}
+
+fn consume_choice<F>(
+    choice_index: usize,
+    choice: &Value,
+    content: &mut String,
+    reasoning: &mut String,
+    tool_calls: &mut BTreeMap<usize, ToolCallBuilder>,
+    on_delta: &mut F,
+) -> Result<()>
+where
+    F: FnMut(&str) -> Result<()>,
+{
+    if let Some(delta) = choice.get("delta") {
+        consume_message_like(
+            choice_index,
+            delta,
+            ToolCallMergeMode::Delta,
+            content,
+            reasoning,
+            tool_calls,
+            on_delta,
+        )?;
+    }
+
+    if let Some(message) = choice.get("message") {
+        consume_message_field(
+            choice_index,
+            message,
+            content,
+            reasoning,
+            tool_calls,
+            on_delta,
+        )?;
+    }
+
+    consume_text_fields(choice, content, on_delta)?;
+    consume_reasoning_fields(choice, reasoning);
+    consume_tool_calls(
+        choice.get("tool_calls"),
+        ToolCallMergeMode::Full,
+        tool_calls,
+    );
+    consume_legacy_function_call(
+        choice_index,
+        choice.get("function_call"),
+        ToolCallMergeMode::Full,
+        tool_calls,
+    );
+
+    Ok(())
+}
+
+fn consume_top_level_chunk<F>(
+    chunk: &Value,
+    content: &mut String,
+    reasoning: &mut String,
+    tool_calls: &mut BTreeMap<usize, ToolCallBuilder>,
+    on_delta: &mut F,
+) -> Result<()>
+where
+    F: FnMut(&str) -> Result<()>,
+{
+    consume_message_like(
+        0,
+        chunk,
+        ToolCallMergeMode::Delta,
+        content,
+        reasoning,
+        tool_calls,
+        on_delta,
+    )?;
+    if let Some(message) = chunk.get("message").filter(|value| value.is_object()) {
+        consume_message_field(0, message, content, reasoning, tool_calls, on_delta)?;
+    }
+    Ok(())
+}
+
+fn consume_message_field<F>(
+    choice_index: usize,
+    message: &Value,
+    content: &mut String,
+    reasoning: &mut String,
+    tool_calls: &mut BTreeMap<usize, ToolCallBuilder>,
+    on_delta: &mut F,
+) -> Result<()>
+where
+    F: FnMut(&str) -> Result<()>,
+{
+    if message.is_object() {
+        consume_message_like(
+            choice_index,
+            message,
+            ToolCallMergeMode::Full,
+            content,
+            reasoning,
+            tool_calls,
+            on_delta,
+        )
+    } else {
+        append_text(message, content, on_delta)
+    }
+}
+
+fn consume_message_like<F>(
+    choice_index: usize,
+    message: &Value,
+    mode: ToolCallMergeMode,
+    content: &mut String,
+    reasoning: &mut String,
+    tool_calls: &mut BTreeMap<usize, ToolCallBuilder>,
+    on_delta: &mut F,
+) -> Result<()>
+where
+    F: FnMut(&str) -> Result<()>,
+{
+    consume_text_fields(message, content, on_delta)?;
+    consume_reasoning_fields(message, reasoning);
+    consume_tool_calls(message.get("tool_calls"), mode, tool_calls);
+    consume_tool_calls(message.get("tool_call"), mode, tool_calls);
+    consume_legacy_function_call(choice_index, message.get("function_call"), mode, tool_calls);
+    Ok(())
+}
+
+fn consume_text_fields<F>(value: &Value, content: &mut String, on_delta: &mut F) -> Result<()>
+where
+    F: FnMut(&str) -> Result<()>,
+{
+    for field in ["content", "text", "output_text", "output", "message"] {
+        if let Some(text) = value.get(field) {
+            append_text(text, content, on_delta)?;
+        }
+    }
+    Ok(())
+}
+
+fn append_text<F>(value: &Value, content: &mut String, on_delta: &mut F) -> Result<()>
+where
+    F: FnMut(&str) -> Result<()>,
+{
+    if let Some(text) = value.as_str().filter(|text| !text.is_empty()) {
+        content.push_str(text);
+        on_delta(text)?;
+    }
+    Ok(())
+}
+
+fn consume_reasoning_fields(value: &Value, reasoning: &mut String) {
+    for field in ["reasoning_content", "reasoning", "thinking"] {
+        if let Some(text) = value
+            .get(field)
+            .and_then(Value::as_str)
+            .filter(|text| !text.is_empty())
+        {
+            reasoning.push_str(text);
+        }
+    }
+}
+
+fn consume_tool_calls(
+    value: Option<&Value>,
+    mode: ToolCallMergeMode,
+    tool_calls: &mut BTreeMap<usize, ToolCallBuilder>,
+) {
+    let Some(value) = value else {
+        return;
+    };
+
+    if let Some(calls) = value.as_array() {
+        for (array_index, call) in calls.iter().enumerate() {
+            merge_tool_call(array_index, call, mode, tool_calls);
+        }
+    } else if value.is_object() {
+        merge_tool_call(0, value, mode, tool_calls);
+    }
+}
+
+fn merge_tool_call(
+    array_index: usize,
+    call: &Value,
+    mode: ToolCallMergeMode,
+    tool_calls: &mut BTreeMap<usize, ToolCallBuilder>,
+) {
+    let index = call
+        .get("index")
+        .and_then(Value::as_u64)
+        .and_then(|index| usize::try_from(index).ok())
+        .unwrap_or(array_index);
+    let builder = tool_calls.entry(index).or_default();
+
+    if let Some(id) = string_field(call, "id") {
+        builder.id = Some(id.to_string());
+    }
+    if let Some(call_type) = string_field(call, "type") {
+        builder.call_type = Some(call_type.to_string());
+    }
+
+    if let Some(function) = call.get("function").filter(|function| function.is_object()) {
+        if let Some(name) = string_field(function, "name") {
+            merge_tool_name(builder, name, mode);
+        }
+        if let Some(arguments) = function.get("arguments") {
+            merge_tool_arguments(builder, arguments, mode);
+        }
+    }
+
+    if let Some(name) = string_field(call, "name") {
+        merge_tool_name(builder, name, mode);
+    }
+    if let Some(arguments) = call.get("arguments") {
+        merge_tool_arguments(builder, arguments, mode);
+    }
+}
+
+fn consume_legacy_function_call(
+    choice_index: usize,
+    value: Option<&Value>,
+    mode: ToolCallMergeMode,
+    tool_calls: &mut BTreeMap<usize, ToolCallBuilder>,
+) {
+    let Some(function_call) = value.filter(|value| value.is_object()) else {
+        return;
+    };
+    let builder = tool_calls.entry(choice_index).or_default();
+    builder
+        .call_type
+        .get_or_insert_with(|| "function".to_string());
+
+    if let Some(name) = string_field(function_call, "name") {
+        merge_tool_name(builder, name, mode);
+    }
+    if let Some(arguments) = function_call.get("arguments") {
+        merge_tool_arguments(builder, arguments, mode);
+    }
+}
+
+fn string_field<'a>(value: &'a Value, field: &str) -> Option<&'a str> {
+    value
+        .get(field)
+        .and_then(Value::as_str)
+        .filter(|text| !text.is_empty())
+}
+
+fn merge_tool_name(builder: &mut ToolCallBuilder, name: &str, mode: ToolCallMergeMode) {
+    match mode {
+        ToolCallMergeMode::Full => builder.name = name.to_string(),
+        ToolCallMergeMode::Delta => append_or_replace_fragment(&mut builder.name, name),
+    }
+}
+
+fn merge_tool_arguments(builder: &mut ToolCallBuilder, arguments: &Value, mode: ToolCallMergeMode) {
+    let Some((arguments, is_string_fragment)) = json_argument_text(arguments) else {
+        return;
+    };
+
+    match mode {
+        ToolCallMergeMode::Full => builder.arguments = arguments,
+        ToolCallMergeMode::Delta if !is_string_fragment => builder.arguments = arguments,
+        ToolCallMergeMode::Delta => append_or_replace_fragment(&mut builder.arguments, &arguments),
+    }
+}
+
+fn json_argument_text(value: &Value) -> Option<(String, bool)> {
+    if value.is_null() {
+        None
+    } else if let Some(text) = value.as_str() {
+        Some((text.to_string(), true))
+    } else {
+        serde_json::to_string(value).ok().map(|text| (text, false))
+    }
+}
+
+fn append_or_replace_fragment(target: &mut String, fragment: &str) {
+    if fragment.is_empty() || target.ends_with(fragment) {
+        return;
+    }
+    if fragment.starts_with(target.as_str()) {
+        *target = fragment.to_string();
+    } else {
+        target.push_str(fragment);
+    }
 }
 
 fn build_tool_calls(builders: BTreeMap<usize, ToolCallBuilder>) -> Vec<ToolCall> {
@@ -516,6 +812,140 @@ mod tests {
         assert_eq!(deltas, vec!["hel"]);
         assert_eq!(tool_calls[0].function.name, "pwd");
         assert_eq!(tool_calls[0].function.arguments, "{}");
+    }
+
+    #[test]
+    fn stream_parser_reads_message_tool_calls() {
+        let mut content = String::new();
+        let mut reasoning = String::new();
+        let mut tool_calls = BTreeMap::new();
+        let mut usage = None;
+
+        process_sse_line(
+            r#"data: {"choices":[{"message":{"tool_calls":[{"id":"call_1","type":"function","function":{"name":"shell_exec","arguments":"{\"command\":\"uname\",\"args\":[\"-a\"]}"}}]}}]}"#,
+            &mut content,
+            &mut reasoning,
+            &mut tool_calls,
+            &mut usage,
+            &mut |_| Ok(()),
+        )
+        .unwrap();
+
+        let tool_calls = build_tool_calls(tool_calls);
+        assert_eq!(tool_calls[0].function.name, "shell_exec");
+        assert_eq!(
+            tool_calls[0].function.arguments,
+            r#"{"command":"uname","args":["-a"]}"#
+        );
+    }
+
+    #[test]
+    fn stream_parser_reads_direct_choice_tool_calls() {
+        let mut content = String::new();
+        let mut reasoning = String::new();
+        let mut tool_calls = BTreeMap::new();
+        let mut usage = None;
+
+        process_sse_line(
+            r#"data: {"choices":[{"tool_calls":[{"id":"call_1","type":"function","function":{"name":"shell_exec","arguments":"{\"command\":\"env\",\"args\":[]}"}}]}]}"#,
+            &mut content,
+            &mut reasoning,
+            &mut tool_calls,
+            &mut usage,
+            &mut |_| Ok(()),
+        )
+        .unwrap();
+
+        let tool_calls = build_tool_calls(tool_calls);
+        assert_eq!(tool_calls[0].function.name, "shell_exec");
+        assert_eq!(
+            tool_calls[0].function.arguments,
+            r#"{"command":"env","args":[]}"#
+        );
+    }
+
+    #[test]
+    fn stream_parser_reads_legacy_function_call() {
+        let mut content = String::new();
+        let mut reasoning = String::new();
+        let mut tool_calls = BTreeMap::new();
+        let mut usage = None;
+
+        process_sse_line(
+            r#"data: {"choices":[{"delta":{"function_call":{"name":"shell_exec","arguments":"{\"command\":\"whoami\",\"args\":[]}"}}}]}"#,
+            &mut content,
+            &mut reasoning,
+            &mut tool_calls,
+            &mut usage,
+            &mut |_| Ok(()),
+        )
+        .unwrap();
+
+        let tool_calls = build_tool_calls(tool_calls);
+        assert_eq!(tool_calls[0].call_type, "function");
+        assert_eq!(tool_calls[0].function.name, "shell_exec");
+        assert_eq!(
+            tool_calls[0].function.arguments,
+            r#"{"command":"whoami","args":[]}"#
+        );
+    }
+
+    #[test]
+    fn stream_parser_serializes_object_arguments() {
+        let mut content = String::new();
+        let mut reasoning = String::new();
+        let mut tool_calls = BTreeMap::new();
+        let mut usage = None;
+
+        process_sse_line(
+            r#"data: {"choices":[{"message":{"tool_calls":[{"id":"call_1","type":"function","function":{"name":"shell_exec","arguments":{"command":"df","args":["-h"]}}}]}}]}"#,
+            &mut content,
+            &mut reasoning,
+            &mut tool_calls,
+            &mut usage,
+            &mut |_| Ok(()),
+        )
+        .unwrap();
+
+        let tool_calls = build_tool_calls(tool_calls);
+        assert_eq!(
+            tool_calls[0].function.arguments,
+            r#"{"args":["-h"],"command":"df"}"#
+        );
+    }
+
+    #[test]
+    fn stream_parser_appends_fragmented_arguments() {
+        let mut content = String::new();
+        let mut reasoning = String::new();
+        let mut tool_calls = BTreeMap::new();
+        let mut usage = None;
+
+        process_sse_line(
+            r#"data: {"choices":[{"delta":{"tool_calls":[{"index":0,"id":"call_1","type":"function","function":{"name":"shell_","arguments":"{\"command\":\"uname\""}}]}}]}"#,
+            &mut content,
+            &mut reasoning,
+            &mut tool_calls,
+            &mut usage,
+            &mut |_| Ok(()),
+        )
+        .unwrap();
+        process_sse_line(
+            r#"data: {"choices":[{"delta":{"tool_calls":[{"index":0,"function":{"name":"exec","arguments":",\"args\":[\"-a\"]}"}}]}}]}"#,
+            &mut content,
+            &mut reasoning,
+            &mut tool_calls,
+            &mut usage,
+            &mut |_| Ok(()),
+        )
+        .unwrap();
+
+        let tool_calls = build_tool_calls(tool_calls);
+        assert_eq!(tool_calls[0].function.name, "shell_exec");
+        assert_eq!(
+            tool_calls[0].function.arguments,
+            r#"{"command":"uname","args":["-a"]}"#
+        );
     }
 
     #[test]
