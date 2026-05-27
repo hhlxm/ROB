@@ -10,12 +10,14 @@ use anyhow::Result;
 use rustyline::error::ReadlineError;
 use rustyline::DefaultEditor;
 use serde_json::Value;
+use std::collections::HashMap;
 use std::io::{self, Write};
 use uuid::Uuid;
 
 const MAX_TOOL_ROUNDS: usize = 6;
 const TOOL_DENIED_MESSAGE: &str = "tool denied by approval policy";
 const TOOL_ROUND_LIMIT_MESSAGE: &str = "Stopped after reaching the tool-call round limit.";
+const INVALID_TOOL_REPEAT_LIMIT: usize = 2;
 
 #[derive(Debug, Clone)]
 pub enum AgentEvent {
@@ -135,6 +137,7 @@ impl AgentSession {
     {
         self.messages.push(user_message(input));
         self.persist()?;
+        let mut invalid_tool_counts = HashMap::new();
 
         for round in 0..MAX_TOOL_ROUNDS {
             let profile = self.config.active_profile()?;
@@ -168,7 +171,15 @@ impl AgentSession {
             }
 
             for call in tool_calls {
-                self.run_and_append_tool_call(call, &mut on_event).await?;
+                let outcome = self
+                    .run_and_append_tool_call(call, &mut on_event, &mut invalid_tool_counts)
+                    .await?;
+                if let ToolOutcome::InvalidRepeated(message) = outcome {
+                    self.messages.push(assistant_text_message(&message));
+                    self.persist()?;
+                    on_event(AgentEvent::AssistantDelta(message.clone()))?;
+                    return Ok(message);
+                }
             }
 
             if round + 1 == MAX_TOOL_ROUNDS {
@@ -226,7 +237,12 @@ impl AgentSession {
         state::save_session(&self.id, &self.messages)
     }
 
-    async fn run_and_append_tool_call<F>(&mut self, call: ToolCall, on_event: &mut F) -> Result<()>
+    async fn run_and_append_tool_call<F>(
+        &mut self,
+        call: ToolCall,
+        on_event: &mut F,
+        invalid_tool_counts: &mut HashMap<String, usize>,
+    ) -> Result<ToolOutcome>
     where
         F: FnMut(AgentEvent) -> Result<()>,
     {
@@ -237,7 +253,21 @@ impl AgentSession {
             arguments: args.clone(),
         })?;
 
-        let outcome = if self.approve_tool(&call.function.name, &args)? {
+        let outcome = if let Some(error) = validate_tool_arguments(&call.function.name, &args) {
+            let count = invalid_tool_counts
+                .entry(format!("{}:{error}", call.function.name))
+                .and_modify(|count| *count += 1)
+                .or_insert(1);
+            let guidance = invalid_tool_guidance(&call.function.name, &error, *count);
+            if *count >= INVALID_TOOL_REPEAT_LIMIT {
+                ToolOutcome::InvalidRepeated(format!(
+                    "Stopped because the model repeatedly produced an invalid `{}` tool call: {error}.",
+                    call.function.name
+                ))
+            } else {
+                ToolOutcome::Failed(guidance)
+            }
+        } else if self.approve_tool(&call.function.name, &args)? {
             match run_tool(&call.function.name, args).await {
                 Ok(output) => ToolOutcome::Completed(output),
                 Err(error) => ToolOutcome::Failed(format!("tool error: {error:#}")),
@@ -260,18 +290,20 @@ impl AgentSession {
                 name: call.function.name,
                 output,
             })?,
-            ToolOutcome::Failed(_) => on_event(AgentEvent::ToolCallFailed {
-                id: call.id,
-                name: call.function.name,
-                error: output,
-            })?,
+            ToolOutcome::Failed(_) | ToolOutcome::InvalidRepeated(_) => {
+                on_event(AgentEvent::ToolCallFailed {
+                    id: call.id,
+                    name: call.function.name,
+                    error: output,
+                })?
+            }
             ToolOutcome::Denied => on_event(AgentEvent::ToolCallDenied {
                 id: call.id,
                 name: call.function.name,
             })?,
         }
 
-        Ok(())
+        Ok(outcome)
     }
 }
 
@@ -279,14 +311,87 @@ enum ToolOutcome {
     Completed(String),
     Failed(String),
     Denied,
+    InvalidRepeated(String),
 }
 
 impl ToolOutcome {
     fn output(&self) -> &str {
         match self {
-            Self::Completed(output) | Self::Failed(output) => output,
+            Self::Completed(output) | Self::Failed(output) | Self::InvalidRepeated(output) => {
+                output
+            }
             Self::Denied => TOOL_DENIED_MESSAGE,
         }
+    }
+}
+
+fn validate_tool_arguments(name: &str, args: &Value) -> Option<String> {
+    match name {
+        "shell_exec" => {
+            let command = args
+                .get("command")
+                .and_then(Value::as_str)
+                .unwrap_or_default();
+            if command.trim().is_empty() {
+                return Some("missing required string argument `command`".to_string());
+            }
+            if !args.get("args").is_some_and(Value::is_array) {
+                return Some(
+                    "missing required array argument `args`; use [] for no arguments".to_string(),
+                );
+            }
+            None
+        }
+        "read_file" => missing_string(args, "path"),
+        "search_text" => missing_string(args, "pattern"),
+        _ => None,
+    }
+}
+
+fn missing_string(args: &Value, key: &str) -> Option<String> {
+    args.get(key)
+        .and_then(Value::as_str)
+        .filter(|value| !value.trim().is_empty())
+        .map(|_| ())
+        .ok_or_else(|| format!("missing required string argument `{key}`"))
+        .err()
+}
+
+fn invalid_tool_guidance(name: &str, error: &str, count: usize) -> String {
+    let example = match name {
+        "shell_exec" => r#"example: {"command":"uname","args":["-a"],"timeout_ms":3000}"#,
+        "read_file" => r#"example: {"path":"README.md"}"#,
+        "search_text" => r#"example: {"pattern":"TODO","path":"."}"#,
+        _ => "check the tool schema and provide all required arguments",
+    };
+    format!(
+        "tool argument error ({count}/{INVALID_TOOL_REPEAT_LIMIT}): {error}. Retry with valid JSON arguments; {example}"
+    )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn validates_empty_shell_exec_arguments_before_running_tool() {
+        let error = validate_tool_arguments("shell_exec", &json!({})).unwrap();
+
+        assert!(error.contains("command"));
+    }
+
+    #[test]
+    fn accepts_valid_shell_exec_arguments() {
+        let error = validate_tool_arguments(
+            "shell_exec",
+            &json!({
+                "command": "uname",
+                "args": ["-a"]
+            }),
+        );
+
+        assert!(error.is_none());
     }
 }
 

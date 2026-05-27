@@ -178,7 +178,7 @@ cargo run -- tools run list_dir '{"path":"src"}'
 cargo run -- tools run shell_exec '{"command":"uname","args":["-s"]}'
 ```
 
-`shell_exec` 不会调用 shell，只会以 `command + args` 形式执行，并限制在 allowlist 内。当前 allowlist 包含：
+`shell_exec` 不会调用 shell，只会以 `command + args` 形式执行，并限制在 allowlist 内。即使没有参数也必须传 `args: []`。如果模型连续返回缺少必填参数的工具调用，ROB 会先把修正提示写回模型；再次重复同类无效调用时会提前停止，避免在 agent loop 中空转到轮次上限。当前 allowlist 包含：
 
 ```text
 pwd, ls, cat, head, tail, wc, rg, find, date, uname, whoami, df, du, ps, env

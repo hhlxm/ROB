@@ -72,15 +72,18 @@ pub fn tool_specs() -> Vec<ToolSpec> {
         ),
         tool(
             "shell_exec",
-            "Run a small allowlisted Linux command without invoking a shell.",
+            "Run a small allowlisted Linux command without invoking a shell. Always provide both `command` and `args`; use `args: []` when the command has no arguments. For system configuration, prefer concrete commands such as uname, whoami, env, df, ps, or ls.",
             json!({
                 "type": "object",
                 "properties": {
-                    "command": { "type": "string" },
-                    "args": { "type": "array", "items": { "type": "string" } },
+                    "command": {
+                        "type": "string",
+                        "enum": ["pwd", "ls", "cat", "head", "tail", "wc", "rg", "find", "date", "uname", "whoami", "df", "du", "ps", "env"]
+                    },
+                    "args": { "type": "array", "items": { "type": "string" }, "default": [] },
                     "timeout_ms": { "type": "integer", "minimum": 100, "maximum": 10000 }
                 },
-                "required": ["command"],
+                "required": ["command", "args"],
                 "additionalProperties": false
             }),
         ),
@@ -312,6 +315,19 @@ mod tests {
         .await;
 
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn shell_exec_schema_requires_command_and_args() {
+        let specs = tool_specs();
+        let shell = specs
+            .iter()
+            .find(|spec| spec.function.name == "shell_exec")
+            .unwrap();
+        let required = shell.function.parameters["required"].as_array().unwrap();
+
+        assert!(required.iter().any(|value| value == "command"));
+        assert!(required.iter().any(|value| value == "args"));
     }
 
     #[tokio::test]
