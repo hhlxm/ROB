@@ -43,6 +43,7 @@ pub async fn run_tui(
 struct TuiApp {
     input: String,
     lines: Vec<Line<'static>>,
+    streaming_assistant: Option<String>,
     status: String,
     scroll: u16,
 }
@@ -52,6 +53,7 @@ impl TuiApp {
         let mut app = Self {
             input: String::new(),
             lines: Vec::new(),
+            streaming_assistant: None,
             status: format!("Session {} | {}", session.id(), session.config_summary()?),
             scroll: 0,
         };
@@ -84,20 +86,34 @@ impl TuiApp {
     }
 
     fn push_message(&mut self, role: &str, content: &str) {
-        let color = match role {
-            "user" => Color::Cyan,
-            "assistant" => Color::Green,
-            _ => Color::Gray,
-        };
-        self.lines.push(Line::from(vec![
-            Span::styled(
-                role.to_string(),
-                Style::default().fg(color).add_modifier(Modifier::BOLD),
-            ),
-            Span::raw("  "),
-            Span::raw(content.to_string()),
-        ]));
+        self.lines.push(message_line(role, content));
         self.lines.push(Line::raw(""));
+    }
+
+    fn push_assistant_delta(&mut self, delta: &str) {
+        let content = self.streaming_assistant.get_or_insert_with(String::new);
+        content.push_str(delta);
+    }
+
+    fn finish_assistant_stream(&mut self, fallback: &str) {
+        let content = self
+            .streaming_assistant
+            .take()
+            .filter(|content| !content.trim().is_empty())
+            .unwrap_or_else(|| fallback.to_string());
+        if content.trim().is_empty() {
+            self.push_system("Model returned an empty response.");
+        } else {
+            self.push_message("assistant", &content);
+        }
+    }
+
+    fn display_lines(&self) -> Vec<Line<'static>> {
+        let mut lines = self.lines.clone();
+        if let Some(content) = &self.streaming_assistant {
+            lines.push(message_line("assistant", content));
+        }
+        lines
     }
 
     fn scroll_down(&mut self) {
@@ -109,36 +125,29 @@ impl TuiApp {
     }
 }
 
+fn message_line(role: &str, content: &str) -> Line<'static> {
+    let color = match role {
+        "user" => Color::Cyan,
+        "assistant" => Color::Green,
+        _ => Color::Gray,
+    };
+    Line::from(vec![
+        Span::styled(
+            role.to_string(),
+            Style::default().fg(color).add_modifier(Modifier::BOLD),
+        ),
+        Span::raw("  "),
+        Span::raw(content.to_string()),
+    ])
+}
+
 async fn run_loop(
     terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
     session: &mut AgentSession,
     app: &mut TuiApp,
 ) -> Result<()> {
     loop {
-        terminal.draw(|frame| {
-            let area = frame.size();
-            let chunks = Layout::default()
-                .direction(Direction::Vertical)
-                .constraints([
-                    Constraint::Min(5),
-                    Constraint::Length(3),
-                    Constraint::Length(1),
-                ])
-                .split(area);
-
-            let transcript = Paragraph::new(app.lines.clone())
-                .block(Block::default().title("ROB Agent").borders(Borders::ALL))
-                .wrap(Wrap { trim: false })
-                .scroll((app.scroll, 0));
-            frame.render_widget(transcript, chunks[0]);
-
-            let input = Paragraph::new(app.input.as_str())
-                .block(Block::default().title("Message").borders(Borders::ALL));
-            frame.render_widget(input, chunks[1]);
-
-            let status = Paragraph::new(app.status.as_str());
-            frame.render_widget(status, chunks[2]);
-        })?;
+        draw_ui(terminal, app)?;
 
         if !event::poll(Duration::from_millis(100))? {
             continue;
@@ -185,37 +194,22 @@ async fn run_loop(
 
                 app.push_message("user", &input);
                 app.status = "Waiting for model response...".to_string();
-                terminal.draw(|frame| {
-                    let area = frame.size();
-                    let chunks = Layout::default()
-                        .direction(Direction::Vertical)
-                        .constraints([
-                            Constraint::Min(5),
-                            Constraint::Length(3),
-                            Constraint::Length(1),
-                        ])
-                        .split(area);
-                    let transcript = Paragraph::new(app.lines.clone())
-                        .block(Block::default().title("ROB Agent").borders(Borders::ALL))
-                        .wrap(Wrap { trim: false })
-                        .scroll((app.scroll, 0));
-                    frame.render_widget(transcript, chunks[0]);
-                    let input_widget = Paragraph::new(app.input.as_str())
-                        .block(Block::default().title("Message").borders(Borders::ALL));
-                    frame.render_widget(input_widget, chunks[1]);
-                    frame.render_widget(Paragraph::new(app.status.as_str()), chunks[2]);
-                })?;
+                draw_ui(terminal, app)?;
 
-                match session.send_user_message(&input).await {
+                match session
+                    .send_user_message_streaming(&input, |delta| {
+                        app.push_assistant_delta(delta);
+                        draw_ui(terminal, app)?;
+                        Ok(())
+                    })
+                    .await
+                {
                     Ok(response) => {
-                        if response.trim().is_empty() {
-                            app.push_system("Model returned an empty response.");
-                        } else {
-                            app.push_message("assistant", &response);
-                        }
+                        app.finish_assistant_stream(&response);
                         app.status = format!("Session {} saved", session.id());
                     }
                     Err(error) => {
+                        app.streaming_assistant = None;
                         app.push_system(&format!("Error: {error:#}"));
                         app.status = "Request failed".to_string();
                     }
@@ -227,5 +221,33 @@ async fn run_loop(
         }
     }
 
+    Ok(())
+}
+
+fn draw_ui(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>, app: &TuiApp) -> Result<()> {
+    terminal.draw(|frame| {
+        let area = frame.size();
+        let chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([
+                Constraint::Min(5),
+                Constraint::Length(3),
+                Constraint::Length(1),
+            ])
+            .split(area);
+
+        let transcript = Paragraph::new(app.display_lines())
+            .block(Block::default().title("ROB Agent").borders(Borders::ALL))
+            .wrap(Wrap { trim: false })
+            .scroll((app.scroll, 0));
+        frame.render_widget(transcript, chunks[0]);
+
+        let input = Paragraph::new(app.input.as_str())
+            .block(Block::default().title("Message").borders(Borders::ALL));
+        frame.render_widget(input, chunks[1]);
+
+        let status = Paragraph::new(app.status.as_str());
+        frame.render_widget(status, chunks[2]);
+    })?;
     Ok(())
 }

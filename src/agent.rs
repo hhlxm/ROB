@@ -1,7 +1,7 @@
 use crate::config::{ApprovalPolicy, RobConfig};
 use crate::llm::{
-    assistant_message, chat_completion, content_as_text, parse_tool_arguments, system_message,
-    tool_message, user_message, ChatMessage,
+    assistant_message, chat_completion_stream, content_as_text, parse_tool_arguments,
+    system_message, tool_message, user_message, ChatMessage,
 };
 use crate::state;
 use crate::tools::{run_tool, tool_specs};
@@ -71,14 +71,22 @@ impl AgentSession {
         })
     }
 
-    pub async fn send_user_message(&mut self, input: &str) -> Result<String> {
+    pub async fn send_user_message_streaming<F>(
+        &mut self,
+        input: &str,
+        mut on_delta: F,
+    ) -> Result<String>
+    where
+        F: FnMut(&str) -> Result<()>,
+    {
         self.messages.push(user_message(input));
         self.persist()?;
 
         for _ in 0..MAX_TOOL_ROUNDS {
             let profile = self.config.active_profile()?;
             let tools = tool_specs();
-            let model_message = chat_completion(profile, &self.messages, &tools).await?;
+            let model_message =
+                chat_completion_stream(profile, &self.messages, &tools, &mut on_delta).await?;
             let tool_calls = model_message.tool_calls.clone().unwrap_or_default();
             let assistant = assistant_message(model_message);
             let answer = content_as_text(assistant.content.clone());
@@ -174,9 +182,15 @@ pub async fn run_repl(
                     "/config" => println!("{}", session.config_summary()?),
                     "/id" => println!("{}", session.id()),
                     _ => {
-                        let response = session.send_user_message(input).await?;
+                        let response = session
+                            .send_user_message_streaming(input, |delta| {
+                                print!("{delta}");
+                                io::stdout().flush()?;
+                                Ok(())
+                            })
+                            .await?;
                         if !response.trim().is_empty() {
-                            println!("{response}");
+                            println!();
                         }
                     }
                 }

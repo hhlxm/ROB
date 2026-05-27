@@ -8,6 +8,7 @@ mod tui;
 use anyhow::Result;
 use clap::{Parser, Subcommand};
 use config::{ApprovalPolicy, ProviderProfile, RobConfig};
+use std::io::{self, Write};
 
 #[derive(Parser)]
 #[command(name = "rob")]
@@ -159,8 +160,16 @@ async fn main() -> Result<()> {
         } => {
             let config = RobConfig::load_or_default()?;
             let mut session = agent::AgentSession::new(config, model, resume, approval)?;
-            let response = session.send_user_message(&message).await?;
-            println!("{response}");
+            let response = session
+                .send_user_message_streaming(&message, |delta| {
+                    print!("{delta}");
+                    io::stdout().flush()?;
+                    Ok(())
+                })
+                .await?;
+            if !response.trim().is_empty() {
+                println!();
+            }
             eprintln!("session: {}", session.id());
             Ok(())
         }
