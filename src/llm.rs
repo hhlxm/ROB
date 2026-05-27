@@ -154,6 +154,7 @@ where
     let mut reasoning = String::new();
     let mut usage = None;
     let mut tool_calls: BTreeMap<usize, ToolCallBuilder> = BTreeMap::new();
+    let mut current_tool_index = None;
     let mut pending = String::new();
     let mut stream = response.bytes_stream();
 
@@ -169,6 +170,7 @@ where
                 &mut content,
                 &mut reasoning,
                 &mut tool_calls,
+                &mut current_tool_index,
                 &mut usage,
                 &mut on_delta,
             )?;
@@ -182,6 +184,7 @@ where
             &mut content,
             &mut reasoning,
             &mut tool_calls,
+            &mut current_tool_index,
             &mut usage,
             &mut on_delta,
         )?;
@@ -313,6 +316,7 @@ fn process_sse_line<F>(
     content: &mut String,
     reasoning: &mut String,
     tool_calls: &mut BTreeMap<usize, ToolCallBuilder>,
+    current_tool_index: &mut Option<usize>,
     usage: &mut Option<Usage>,
     on_delta: &mut F,
 ) -> Result<()>
@@ -349,11 +353,19 @@ where
                     content,
                     reasoning,
                     tool_calls,
+                    current_tool_index,
                     on_delta,
                 )?;
             }
         } else {
-            consume_top_level_chunk(&chunk, content, reasoning, tool_calls, on_delta)?;
+            consume_top_level_chunk(
+                &chunk,
+                content,
+                reasoning,
+                tool_calls,
+                current_tool_index,
+                on_delta,
+            )?;
         }
     }
 
@@ -429,6 +441,7 @@ fn consume_choice<F>(
     content: &mut String,
     reasoning: &mut String,
     tool_calls: &mut BTreeMap<usize, ToolCallBuilder>,
+    current_tool_index: &mut Option<usize>,
     on_delta: &mut F,
 ) -> Result<()>
 where
@@ -442,6 +455,7 @@ where
             content,
             reasoning,
             tool_calls,
+            current_tool_index,
             on_delta,
         )?;
     }
@@ -453,6 +467,7 @@ where
             content,
             reasoning,
             tool_calls,
+            current_tool_index,
             on_delta,
         )?;
     }
@@ -463,12 +478,14 @@ where
         choice.get("tool_calls"),
         ToolCallMergeMode::Full,
         tool_calls,
+        current_tool_index,
     );
     consume_legacy_function_call(
         choice_index,
         choice.get("function_call"),
         ToolCallMergeMode::Full,
         tool_calls,
+        current_tool_index,
     );
 
     Ok(())
@@ -479,6 +496,7 @@ fn consume_top_level_chunk<F>(
     content: &mut String,
     reasoning: &mut String,
     tool_calls: &mut BTreeMap<usize, ToolCallBuilder>,
+    current_tool_index: &mut Option<usize>,
     on_delta: &mut F,
 ) -> Result<()>
 where
@@ -491,10 +509,19 @@ where
         content,
         reasoning,
         tool_calls,
+        current_tool_index,
         on_delta,
     )?;
     if let Some(message) = chunk.get("message").filter(|value| value.is_object()) {
-        consume_message_field(0, message, content, reasoning, tool_calls, on_delta)?;
+        consume_message_field(
+            0,
+            message,
+            content,
+            reasoning,
+            tool_calls,
+            current_tool_index,
+            on_delta,
+        )?;
     }
     Ok(())
 }
@@ -505,6 +532,7 @@ fn consume_message_field<F>(
     content: &mut String,
     reasoning: &mut String,
     tool_calls: &mut BTreeMap<usize, ToolCallBuilder>,
+    current_tool_index: &mut Option<usize>,
     on_delta: &mut F,
 ) -> Result<()>
 where
@@ -518,6 +546,7 @@ where
             content,
             reasoning,
             tool_calls,
+            current_tool_index,
             on_delta,
         )
     } else {
@@ -532,6 +561,7 @@ fn consume_message_like<F>(
     content: &mut String,
     reasoning: &mut String,
     tool_calls: &mut BTreeMap<usize, ToolCallBuilder>,
+    current_tool_index: &mut Option<usize>,
     on_delta: &mut F,
 ) -> Result<()>
 where
@@ -539,9 +569,25 @@ where
 {
     consume_text_fields(message, content, on_delta)?;
     consume_reasoning_fields(message, reasoning);
-    consume_tool_calls(message.get("tool_calls"), mode, tool_calls);
-    consume_tool_calls(message.get("tool_call"), mode, tool_calls);
-    consume_legacy_function_call(choice_index, message.get("function_call"), mode, tool_calls);
+    consume_tool_calls(
+        message.get("tool_calls"),
+        mode,
+        tool_calls,
+        current_tool_index,
+    );
+    consume_tool_calls(
+        message.get("tool_call"),
+        mode,
+        tool_calls,
+        current_tool_index,
+    );
+    consume_legacy_function_call(
+        choice_index,
+        message.get("function_call"),
+        mode,
+        tool_calls,
+        current_tool_index,
+    );
     Ok(())
 }
 
@@ -584,6 +630,7 @@ fn consume_tool_calls(
     value: Option<&Value>,
     mode: ToolCallMergeMode,
     tool_calls: &mut BTreeMap<usize, ToolCallBuilder>,
+    current_tool_index: &mut Option<usize>,
 ) {
     let Some(value) = value else {
         return;
@@ -591,10 +638,10 @@ fn consume_tool_calls(
 
     if let Some(calls) = value.as_array() {
         for (array_index, call) in calls.iter().enumerate() {
-            merge_tool_call(array_index, call, mode, tool_calls);
+            merge_tool_call(array_index, call, mode, tool_calls, current_tool_index);
         }
     } else if value.is_object() {
-        merge_tool_call(0, value, mode, tool_calls);
+        merge_tool_call(0, value, mode, tool_calls, current_tool_index);
     }
 }
 
@@ -603,24 +650,29 @@ fn merge_tool_call(
     call: &Value,
     mode: ToolCallMergeMode,
     tool_calls: &mut BTreeMap<usize, ToolCallBuilder>,
+    current_tool_index: &mut Option<usize>,
 ) {
-    let index = call
+    let declared_index = call
         .get("index")
         .and_then(Value::as_u64)
         .and_then(|index| usize::try_from(index).ok())
         .unwrap_or(array_index);
+    let index = tool_call_merge_index(declared_index, call, tool_calls, current_tool_index);
     let builder = tool_calls.entry(index).or_default();
 
     if let Some(id) = string_field(call, "id") {
         builder.id = Some(id.to_string());
+        *current_tool_index = Some(index);
     }
     if let Some(call_type) = string_field(call, "type") {
         builder.call_type = Some(call_type.to_string());
+        *current_tool_index = Some(index);
     }
 
     if let Some(function) = call.get("function").filter(|function| function.is_object()) {
         if let Some(name) = string_field(function, "name") {
             merge_tool_name(builder, name, mode);
+            *current_tool_index = Some(index);
         }
         if let Some(arguments) = function.get("arguments") {
             merge_tool_arguments(builder, arguments, mode);
@@ -629,10 +681,58 @@ fn merge_tool_call(
 
     if let Some(name) = string_field(call, "name") {
         merge_tool_name(builder, name, mode);
+        *current_tool_index = Some(index);
     }
     if let Some(arguments) = call.get("arguments") {
         merge_tool_arguments(builder, arguments, mode);
     }
+}
+
+fn tool_call_merge_index(
+    declared_index: usize,
+    call: &Value,
+    tool_calls: &BTreeMap<usize, ToolCallBuilder>,
+    current_tool_index: &Option<usize>,
+) -> usize {
+    let has_identity = string_field(call, "id").is_some()
+        || string_field(call, "type").is_some()
+        || string_field(call, "name").is_some()
+        || call
+            .get("function")
+            .and_then(|function| string_field(function, "name"))
+            .is_some();
+    let has_arguments = call.get("arguments").is_some()
+        || call
+            .get("function")
+            .and_then(|function| function.get("arguments"))
+            .is_some();
+
+    if has_identity || !has_arguments {
+        return declared_index;
+    }
+
+    if tool_calls
+        .get(&declared_index)
+        .is_some_and(|builder| !builder.name.is_empty())
+    {
+        return declared_index;
+    }
+
+    current_tool_index
+        .and_then(|index| {
+            tool_calls
+                .get(&index)
+                .filter(|builder| !builder.name.is_empty())
+                .map(|_| index)
+        })
+        .or_else(|| {
+            tool_calls
+                .iter()
+                .rev()
+                .find(|(_, builder)| !builder.name.is_empty() && builder.arguments.is_empty())
+                .map(|(index, _)| *index)
+        })
+        .unwrap_or(declared_index)
 }
 
 fn consume_legacy_function_call(
@@ -640,6 +740,7 @@ fn consume_legacy_function_call(
     value: Option<&Value>,
     mode: ToolCallMergeMode,
     tool_calls: &mut BTreeMap<usize, ToolCallBuilder>,
+    current_tool_index: &mut Option<usize>,
 ) {
     let Some(function_call) = value.filter(|value| value.is_object()) else {
         return;
@@ -651,6 +752,7 @@ fn consume_legacy_function_call(
 
     if let Some(name) = string_field(function_call, "name") {
         merge_tool_name(builder, name, mode);
+        *current_tool_index = Some(choice_index);
     }
     if let Some(arguments) = function_call.get("arguments") {
         merge_tool_arguments(builder, arguments, mode);
@@ -782,6 +884,7 @@ mod tests {
         let mut content = String::new();
         let mut reasoning = String::new();
         let mut tool_calls = BTreeMap::new();
+        let mut current_tool_index = None;
         let mut usage = None;
         let mut deltas = Vec::new();
 
@@ -790,6 +893,7 @@ mod tests {
             &mut content,
             &mut reasoning,
             &mut tool_calls,
+            &mut current_tool_index,
             &mut usage,
             &mut |delta| {
                 deltas.push(delta.to_string());
@@ -802,6 +906,7 @@ mod tests {
             &mut content,
             &mut reasoning,
             &mut tool_calls,
+            &mut current_tool_index,
             &mut usage,
             &mut |_| Ok(()),
         )
@@ -819,6 +924,7 @@ mod tests {
         let mut content = String::new();
         let mut reasoning = String::new();
         let mut tool_calls = BTreeMap::new();
+        let mut current_tool_index = None;
         let mut usage = None;
 
         process_sse_line(
@@ -826,6 +932,7 @@ mod tests {
             &mut content,
             &mut reasoning,
             &mut tool_calls,
+            &mut current_tool_index,
             &mut usage,
             &mut |_| Ok(()),
         )
@@ -844,6 +951,7 @@ mod tests {
         let mut content = String::new();
         let mut reasoning = String::new();
         let mut tool_calls = BTreeMap::new();
+        let mut current_tool_index = None;
         let mut usage = None;
 
         process_sse_line(
@@ -851,6 +959,7 @@ mod tests {
             &mut content,
             &mut reasoning,
             &mut tool_calls,
+            &mut current_tool_index,
             &mut usage,
             &mut |_| Ok(()),
         )
@@ -869,6 +978,7 @@ mod tests {
         let mut content = String::new();
         let mut reasoning = String::new();
         let mut tool_calls = BTreeMap::new();
+        let mut current_tool_index = None;
         let mut usage = None;
 
         process_sse_line(
@@ -876,6 +986,7 @@ mod tests {
             &mut content,
             &mut reasoning,
             &mut tool_calls,
+            &mut current_tool_index,
             &mut usage,
             &mut |_| Ok(()),
         )
@@ -895,6 +1006,7 @@ mod tests {
         let mut content = String::new();
         let mut reasoning = String::new();
         let mut tool_calls = BTreeMap::new();
+        let mut current_tool_index = None;
         let mut usage = None;
 
         process_sse_line(
@@ -902,6 +1014,7 @@ mod tests {
             &mut content,
             &mut reasoning,
             &mut tool_calls,
+            &mut current_tool_index,
             &mut usage,
             &mut |_| Ok(()),
         )
@@ -919,6 +1032,7 @@ mod tests {
         let mut content = String::new();
         let mut reasoning = String::new();
         let mut tool_calls = BTreeMap::new();
+        let mut current_tool_index = None;
         let mut usage = None;
 
         process_sse_line(
@@ -926,6 +1040,7 @@ mod tests {
             &mut content,
             &mut reasoning,
             &mut tool_calls,
+            &mut current_tool_index,
             &mut usage,
             &mut |_| Ok(()),
         )
@@ -935,6 +1050,7 @@ mod tests {
             &mut content,
             &mut reasoning,
             &mut tool_calls,
+            &mut current_tool_index,
             &mut usage,
             &mut |_| Ok(()),
         )
@@ -949,10 +1065,74 @@ mod tests {
     }
 
     #[test]
+    fn stream_parser_routes_argument_only_chunks_to_current_tool() {
+        let mut content = String::new();
+        let mut reasoning = String::new();
+        let mut tool_calls = BTreeMap::new();
+        let mut current_tool_index = None;
+        let mut usage = None;
+
+        process_sse_line(
+            r#"data: {"choices":[{"delta":{"tool_calls":[{"function":{"arguments":"","name":"shell_exec"},"id":"call_1","index":0,"type":"function"}]}}]}"#,
+            &mut content,
+            &mut reasoning,
+            &mut tool_calls,
+            &mut current_tool_index,
+            &mut usage,
+            &mut |_| Ok(()),
+        )
+        .unwrap();
+        process_sse_line(
+            r#"data: {"choices":[{"delta":{"tool_calls":[{"function":{"arguments":"{\"args\":[\"-a\"],\"command\":\"uname\"}"},"index":1}]}}]}"#,
+            &mut content,
+            &mut reasoning,
+            &mut tool_calls,
+            &mut current_tool_index,
+            &mut usage,
+            &mut |_| Ok(()),
+        )
+        .unwrap();
+        process_sse_line(
+            r#"data: {"choices":[{"delta":{"tool_calls":[{"function":{"arguments":"","name":"shell_exec"},"id":"call_2","index":2,"type":"function"}]}}]}"#,
+            &mut content,
+            &mut reasoning,
+            &mut tool_calls,
+            &mut current_tool_index,
+            &mut usage,
+            &mut |_| Ok(()),
+        )
+        .unwrap();
+        process_sse_line(
+            r#"data: {"choices":[{"delta":{"tool_calls":[{"function":{"arguments":"{\"args\":[],\"command\":\"whoami\"}"},"index":1}]}}]}"#,
+            &mut content,
+            &mut reasoning,
+            &mut tool_calls,
+            &mut current_tool_index,
+            &mut usage,
+            &mut |_| Ok(()),
+        )
+        .unwrap();
+
+        let tool_calls = build_tool_calls(tool_calls);
+        assert_eq!(tool_calls.len(), 2);
+        assert_eq!(tool_calls[0].id, "call_1");
+        assert_eq!(
+            tool_calls[0].function.arguments,
+            r#"{"args":["-a"],"command":"uname"}"#
+        );
+        assert_eq!(tool_calls[1].id, "call_2");
+        assert_eq!(
+            tool_calls[1].function.arguments,
+            r#"{"args":[],"command":"whoami"}"#
+        );
+    }
+
+    #[test]
     fn stream_parser_accumulates_reasoning() {
         let mut content = String::new();
         let mut reasoning = String::new();
         let mut tool_calls = BTreeMap::new();
+        let mut current_tool_index = None;
         let mut usage = None;
 
         process_sse_line(
@@ -960,6 +1140,7 @@ mod tests {
             &mut content,
             &mut reasoning,
             &mut tool_calls,
+            &mut current_tool_index,
             &mut usage,
             &mut |_| Ok(()),
         )
