@@ -10,6 +10,10 @@ pub struct RobConfig {
     pub profiles: Vec<ProviderProfile>,
     #[serde(default)]
     pub tool_approval: ApprovalPolicy,
+    #[serde(default)]
+    pub context: ContextConfig,
+    #[serde(default)]
+    pub reasoning: ReasoningConfig,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -23,6 +27,17 @@ pub struct ProviderProfile {
     pub protocol: String,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ContextConfig {
+    pub token_threshold: usize,
+    pub recent_messages: usize,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ReasoningConfig {
+    pub effort: ReasoningEffort,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ValueEnum)]
 #[serde(rename_all = "kebab-case")]
 pub enum ApprovalPolicy {
@@ -30,6 +45,21 @@ pub enum ApprovalPolicy {
     Auto,
     /// Ask before running tools in interactive chat; deny tools in non-interactive ask.
     OnRequest,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ValueEnum)]
+#[serde(rename_all = "kebab-case")]
+pub enum ReasoningEffort {
+    /// Do not send provider-specific reasoning controls.
+    Auto,
+    /// Explicitly disable thinking when the provider supports it.
+    No,
+    /// Request low reasoning effort.
+    Low,
+    /// Request medium reasoning effort.
+    Medium,
+    /// Request high reasoning effort.
+    High,
 }
 
 impl RobConfig {
@@ -89,6 +119,8 @@ impl Default for RobConfig {
             active_profile_id: String::new(),
             profiles: Vec::new(),
             tool_approval: ApprovalPolicy::Auto,
+            context: ContextConfig::default(),
+            reasoning: ReasoningConfig::default(),
         }
     }
 }
@@ -99,11 +131,46 @@ impl Default for ApprovalPolicy {
     }
 }
 
+impl Default for ContextConfig {
+    fn default() -> Self {
+        Self {
+            token_threshold: 32_000,
+            recent_messages: 12,
+        }
+    }
+}
+
+impl Default for ReasoningConfig {
+    fn default() -> Self {
+        Self {
+            effort: ReasoningEffort::Auto,
+        }
+    }
+}
+
+impl Default for ReasoningEffort {
+    fn default() -> Self {
+        Self::Auto
+    }
+}
+
 impl fmt::Display for ApprovalPolicy {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Auto => write!(formatter, "auto"),
             Self::OnRequest => write!(formatter, "on-request"),
+        }
+    }
+}
+
+impl fmt::Display for ReasoningEffort {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Auto => write!(formatter, "auto"),
+            Self::No => write!(formatter, "no"),
+            Self::Low => write!(formatter, "low"),
+            Self::Medium => write!(formatter, "medium"),
+            Self::High => write!(formatter, "high"),
         }
     }
 }

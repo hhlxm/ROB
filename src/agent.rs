@@ -1,4 +1,5 @@
 use crate::config::{ApprovalPolicy, RobConfig};
+use crate::context::{prepare_context, ContextWindowConfig};
 use crate::llm::{
     assistant_message, assistant_text_message, chat_completion_stream, content_as_text,
     parse_tool_arguments, system_message, tool_message, user_message, ChatMessage, ToolCall,
@@ -19,6 +20,11 @@ const TOOL_ROUND_LIMIT_MESSAGE: &str = "Stopped after reaching the tool-call rou
 #[derive(Debug, Clone)]
 pub enum AgentEvent {
     AssistantDelta(String),
+    ContextWindow {
+        estimated_tokens: usize,
+        threshold: usize,
+        compacted: bool,
+    },
     ToolCallStarted {
         id: String,
         name: String,
@@ -106,8 +112,13 @@ impl AgentSession {
         F: FnMut(&str) -> Result<()>,
     {
         self.send_user_message_events(input, |event| {
-            if let AgentEvent::AssistantDelta(delta) = event {
-                on_delta(&delta)?;
+            match event {
+                AgentEvent::AssistantDelta(delta) => on_delta(&delta)?,
+                AgentEvent::ContextWindow { .. }
+                | AgentEvent::ToolCallStarted { .. }
+                | AgentEvent::ToolCallCompleted { .. }
+                | AgentEvent::ToolCallFailed { .. }
+                | AgentEvent::ToolCallDenied { .. } => {}
             }
             Ok(())
         })
@@ -128,9 +139,23 @@ impl AgentSession {
         for round in 0..MAX_TOOL_ROUNDS {
             let profile = self.config.active_profile()?;
             let tools = tool_specs();
-            let model_message = chat_completion_stream(profile, &self.messages, &tools, |delta| {
-                on_event(AgentEvent::AssistantDelta(delta.to_string()))
-            })
+            let context_config = ContextWindowConfig {
+                token_threshold: self.config.context.token_threshold,
+                recent_messages: self.config.context.recent_messages,
+            };
+            let prepared_context = prepare_context(&self.messages, &context_config);
+            on_event(AgentEvent::ContextWindow {
+                estimated_tokens: prepared_context.estimated_tokens,
+                threshold: context_config.token_threshold,
+                compacted: prepared_context.compacted,
+            })?;
+            let model_message = chat_completion_stream(
+                profile,
+                &prepared_context.messages,
+                &tools,
+                self.config.reasoning.effort,
+                |delta| on_event(AgentEvent::AssistantDelta(delta.to_string())),
+            )
             .await?;
             let tool_calls = model_message.tool_calls.clone().unwrap_or_default();
             let assistant = assistant_message(model_message);
@@ -171,8 +196,15 @@ impl AgentSession {
     pub fn config_summary(&self) -> Result<String> {
         let profile = self.config.active_profile()?;
         Ok(format!(
-            "{} | {} | {} | {} | approval={}",
-            profile.name, profile.base_url, profile.model, profile.protocol, self.approval_policy
+            "{} | {} | {} | {} | approval={} | reasoning={} | context={} tokens/{} msgs",
+            profile.name,
+            profile.base_url,
+            profile.model,
+            profile.protocol,
+            self.approval_policy,
+            self.config.reasoning.effort,
+            self.config.context.token_threshold,
+            self.config.context.recent_messages
         ))
     }
 
@@ -289,9 +321,39 @@ pub async fn run_repl(
                     "/id" => println!("{}", session.id()),
                     _ => {
                         let response = session
-                            .send_user_message_streaming(input, |delta| {
-                                print!("{delta}");
-                                io::stdout().flush()?;
+                            .send_user_message_events(input, |event| {
+                                match event {
+                                    AgentEvent::AssistantDelta(delta) => {
+                                        print!("{delta}");
+                                        io::stdout().flush()?;
+                                    }
+                                    AgentEvent::ContextWindow {
+                                        estimated_tokens,
+                                        threshold,
+                                        compacted,
+                                    } => {
+                                        let state = if compacted { "compacted" } else { "active" };
+                                        eprintln!(
+                                            "[context {state}: ~{estimated_tokens}/{threshold} tokens]"
+                                        );
+                                    }
+                                    AgentEvent::ToolCallStarted {
+                                        id,
+                                        name,
+                                        arguments,
+                                    } => {
+                                        eprintln!("[tool calling {name} #{id} args={arguments}]");
+                                    }
+                                    AgentEvent::ToolCallCompleted { id, name, .. } => {
+                                        eprintln!("[tool called {name} #{id}]");
+                                    }
+                                    AgentEvent::ToolCallFailed { id, name, error } => {
+                                        eprintln!("[tool failed {name} #{id}: {error}]");
+                                    }
+                                    AgentEvent::ToolCallDenied { id, name } => {
+                                        eprintln!("[tool denied {name} #{id}]");
+                                    }
+                                }
                                 Ok(())
                             })
                             .await?;

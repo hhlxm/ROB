@@ -226,6 +226,17 @@ impl TuiApp {
                 self.status = "Streaming model response...".to_string();
                 self.push_assistant_delta(&delta);
             }
+            AgentEvent::ContextWindow {
+                estimated_tokens,
+                threshold,
+                compacted,
+            } => {
+                self.status = if compacted {
+                    format!("Context compacted: ~{estimated_tokens}/{threshold} tokens")
+                } else {
+                    format!("Context: ~{estimated_tokens}/{threshold} tokens")
+                };
+            }
             AgentEvent::ToolCallStarted {
                 id,
                 name,

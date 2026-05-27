@@ -1,4 +1,4 @@
-use crate::config::ProviderProfile;
+use crate::config::{ProviderProfile, ReasoningEffort};
 use crate::tools::ToolSpec;
 use anyhow::{Context, Result};
 use futures_util::StreamExt;
@@ -12,6 +12,8 @@ pub struct ChatMessage {
     pub role: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub content: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reasoning_content: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tool_calls: Option<Vec<ToolCall>>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -42,6 +44,10 @@ struct ChatCompletionRequest<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
     tool_choice: Option<&'a str>,
     parallel_tool_calls: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    reasoning_effort: Option<&'a str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    enable_thinking: Option<bool>,
     temperature: f32,
     stream: bool,
 }
@@ -49,6 +55,7 @@ struct ChatCompletionRequest<'a> {
 #[derive(Debug, Deserialize)]
 struct ChatCompletionStreamChunk {
     choices: Vec<ChatStreamChoice>,
+    usage: Option<Usage>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -59,8 +66,18 @@ struct ChatStreamChoice {
 #[derive(Debug, Deserialize)]
 struct ChatStreamDelta {
     content: Option<String>,
+    reasoning_content: Option<String>,
+    reasoning: Option<String>,
+    thinking: Option<String>,
     #[serde(default)]
     tool_calls: Vec<ToolCallDelta>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct Usage {
+    pub prompt_tokens: Option<usize>,
+    pub completion_tokens: Option<usize>,
+    pub total_tokens: Option<usize>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -90,6 +107,7 @@ pub async fn chat_completion_stream<F>(
     profile: &ProviderProfile,
     messages: &[ChatMessage],
     tools: &[ToolSpec],
+    reasoning_effort: ReasoningEffort,
     mut on_delta: F,
 ) -> Result<ChatMessage>
 where
@@ -103,6 +121,8 @@ where
         tools,
         tool_choice: None,
         parallel_tool_calls: false,
+        reasoning_effort: reasoning_effort.as_request_value(),
+        enable_thinking: reasoning_effort.enable_thinking_value(),
         temperature: 0.2,
         stream: true,
     };
@@ -125,6 +145,8 @@ where
     }
 
     let mut content = String::new();
+    let mut reasoning = String::new();
+    let mut usage = None;
     let mut tool_calls: BTreeMap<usize, ToolCallBuilder> = BTreeMap::new();
     let mut pending = String::new();
     let mut stream = response.bytes_stream();
@@ -136,13 +158,27 @@ where
         while let Some(newline) = pending.find('\n') {
             let line = pending[..newline].trim_end_matches('\r').to_string();
             pending.drain(..=newline);
-            process_sse_line(&line, &mut content, &mut tool_calls, &mut on_delta)?;
+            process_sse_line(
+                &line,
+                &mut content,
+                &mut reasoning,
+                &mut tool_calls,
+                &mut usage,
+                &mut on_delta,
+            )?;
         }
     }
 
     if !pending.trim().is_empty() {
         let line = pending.trim_end_matches('\r').to_string();
-        process_sse_line(&line, &mut content, &mut tool_calls, &mut on_delta)?;
+        process_sse_line(
+            &line,
+            &mut content,
+            &mut reasoning,
+            &mut tool_calls,
+            &mut usage,
+            &mut on_delta,
+        )?;
     }
 
     let tool_calls = build_tool_calls(tool_calls);
@@ -152,6 +188,11 @@ where
             None
         } else {
             Some(content)
+        },
+        reasoning_content: if reasoning.is_empty() {
+            None
+        } else {
+            Some(reasoning)
         },
         tool_calls: if tool_calls.is_empty() {
             None
@@ -163,6 +204,24 @@ where
     })
 }
 
+impl ReasoningEffort {
+    fn as_request_value(&self) -> Option<&'static str> {
+        match self {
+            Self::Auto | Self::No => None,
+            Self::Low => Some("low"),
+            Self::Medium => Some("medium"),
+            Self::High => Some("high"),
+        }
+    }
+
+    fn enable_thinking_value(&self) -> Option<bool> {
+        match self {
+            Self::No => Some(false),
+            Self::Auto | Self::Low | Self::Medium | Self::High => None,
+        }
+    }
+}
+
 pub fn system_message() -> ChatMessage {
     ChatMessage {
         role: "system".to_string(),
@@ -172,6 +231,7 @@ Use tools when they help inspect the local Linux environment. Keep answers conci
 When using shell_exec, pass a command and argv array; never assume shell expansion."
                 .to_string(),
         ),
+        reasoning_content: None,
         tool_calls: None,
         tool_call_id: None,
         name: None,
@@ -182,6 +242,7 @@ pub fn user_message(content: &str) -> ChatMessage {
     ChatMessage {
         role: "user".to_string(),
         content: Some(content.to_string()),
+        reasoning_content: None,
         tool_calls: None,
         tool_call_id: None,
         name: None,
@@ -192,6 +253,7 @@ pub fn assistant_message(message: ChatMessage) -> ChatMessage {
     ChatMessage {
         role: "assistant".to_string(),
         content: message.content,
+        reasoning_content: message.reasoning_content,
         tool_calls: message.tool_calls,
         tool_call_id: None,
         name: None,
@@ -202,6 +264,7 @@ pub fn assistant_text_message(content: &str) -> ChatMessage {
     ChatMessage {
         role: "assistant".to_string(),
         content: Some(content.to_string()),
+        reasoning_content: None,
         tool_calls: None,
         tool_call_id: None,
         name: None,
@@ -212,6 +275,7 @@ pub fn tool_message(tool_call_id: String, name: String, content: String) -> Chat
     ChatMessage {
         role: "tool".to_string(),
         content: Some(content),
+        reasoning_content: None,
         tool_calls: None,
         tool_call_id: Some(tool_call_id),
         name: Some(name),
@@ -238,7 +302,9 @@ fn chat_completions_endpoint(base_url: &str) -> String {
 fn process_sse_line<F>(
     line: &str,
     content: &mut String,
+    reasoning: &mut String,
     tool_calls: &mut BTreeMap<usize, ToolCallBuilder>,
+    usage: &mut Option<Usage>,
     on_delta: &mut F,
 ) -> Result<()>
 where
@@ -259,6 +325,9 @@ where
 
     let chunk: ChatCompletionStreamChunk = serde_json::from_str(data)
         .with_context(|| format!("failed to decode stream chunk: {data}"))?;
+    if chunk.usage.is_some() {
+        *usage = chunk.usage;
+    }
 
     for choice in chunk.choices {
         if let Some(delta) = choice.delta.content {
@@ -266,6 +335,16 @@ where
                 content.push_str(&delta);
                 on_delta(&delta)?;
             }
+        }
+        for delta in [
+            choice.delta.reasoning_content,
+            choice.delta.reasoning,
+            choice.delta.thinking,
+        ]
+        .into_iter()
+        .flatten()
+        {
+            reasoning.push_str(&delta);
         }
 
         for delta in choice.delta.tool_calls {
@@ -328,13 +407,17 @@ mod tests {
     #[test]
     fn stream_parser_accumulates_content_and_tool_calls() {
         let mut content = String::new();
+        let mut reasoning = String::new();
         let mut tool_calls = BTreeMap::new();
+        let mut usage = None;
         let mut deltas = Vec::new();
 
         process_sse_line(
             r#"data: {"choices":[{"delta":{"content":"hel"}}]}"#,
             &mut content,
+            &mut reasoning,
             &mut tool_calls,
+            &mut usage,
             &mut |delta| {
                 deltas.push(delta.to_string());
                 Ok(())
@@ -344,7 +427,9 @@ mod tests {
         process_sse_line(
             r#"data: {"choices":[{"delta":{"tool_calls":[{"index":0,"id":"call_1","type":"function","function":{"name":"pwd","arguments":"{}"}}]}}]}"#,
             &mut content,
+            &mut reasoning,
             &mut tool_calls,
+            &mut usage,
             &mut |_| Ok(()),
         )
         .unwrap();
@@ -354,5 +439,26 @@ mod tests {
         assert_eq!(deltas, vec!["hel"]);
         assert_eq!(tool_calls[0].function.name, "pwd");
         assert_eq!(tool_calls[0].function.arguments, "{}");
+    }
+
+    #[test]
+    fn stream_parser_accumulates_reasoning() {
+        let mut content = String::new();
+        let mut reasoning = String::new();
+        let mut tool_calls = BTreeMap::new();
+        let mut usage = None;
+
+        process_sse_line(
+            r#"data: {"choices":[{"delta":{"reasoning_content":"think"}}],"usage":{"prompt_tokens":12}}"#,
+            &mut content,
+            &mut reasoning,
+            &mut tool_calls,
+            &mut usage,
+            &mut |_| Ok(()),
+        )
+        .unwrap();
+
+        assert_eq!(reasoning, "think");
+        assert_eq!(usage.unwrap().prompt_tokens, Some(12));
     }
 }

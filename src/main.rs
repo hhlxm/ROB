@@ -1,5 +1,6 @@
 mod agent;
 mod config;
+mod context;
 mod llm;
 mod state;
 mod tools;
@@ -7,7 +8,7 @@ mod tui;
 
 use anyhow::Result;
 use clap::{Parser, Subcommand};
-use config::{ApprovalPolicy, ProviderProfile, RobConfig};
+use config::{ApprovalPolicy, ProviderProfile, ReasoningEffort, RobConfig};
 use std::io::{self, Write};
 
 #[derive(Parser)]
@@ -108,6 +109,20 @@ enum ConfigCommand {
         #[arg(value_enum)]
         policy: ApprovalPolicy,
     },
+    /// Set context window management defaults.
+    SetContext {
+        /// Estimated prompt-token threshold before runtime compaction.
+        #[arg(long)]
+        token_threshold: usize,
+        /// Number of recent messages to keep verbatim after compaction.
+        #[arg(long)]
+        recent_messages: usize,
+    },
+    /// Set reasoning/thinking effort for compatible providers.
+    SetReasoning {
+        #[arg(value_enum)]
+        effort: ReasoningEffort,
+    },
 }
 
 #[derive(Subcommand)]
@@ -207,6 +222,11 @@ async fn handle_config(command: ConfigCommand) -> Result<()> {
             println!("model: {}", profile.model);
             println!("protocol: {}", profile.protocol);
             println!("tool_approval: {}", config.tool_approval);
+            println!("reasoning_effort: {}", config.reasoning.effort);
+            println!(
+                "context: token_threshold={} recent_messages={}",
+                config.context.token_threshold, config.context.recent_messages
+            );
             if let Some(env) = &profile.api_key_env {
                 println!("api_key_env: {env}");
             }
@@ -244,6 +264,27 @@ async fn handle_config(command: ConfigCommand) -> Result<()> {
             config.tool_approval = policy;
             config.save()?;
             println!("Default tool approval set to {}", config.tool_approval);
+            Ok(())
+        }
+        ConfigCommand::SetContext {
+            token_threshold,
+            recent_messages,
+        } => {
+            let mut config = RobConfig::load_or_default()?;
+            config.context.token_threshold = token_threshold.max(1);
+            config.context.recent_messages = recent_messages.max(1);
+            config.save()?;
+            println!(
+                "Context window set to threshold={} recent_messages={}",
+                config.context.token_threshold, config.context.recent_messages
+            );
+            Ok(())
+        }
+        ConfigCommand::SetReasoning { effort } => {
+            let mut config = RobConfig::load_or_default()?;
+            config.reasoning.effort = effort;
+            config.save()?;
+            println!("Reasoning effort set to {}", config.reasoning.effort);
             Ok(())
         }
         ConfigCommand::Path => {
