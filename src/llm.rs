@@ -1,5 +1,5 @@
 use crate::config::{ProviderProfile, ReasoningEffort};
-use crate::tools::ToolSpec;
+use crate::tools::{ToolFunctionSpec, ToolSpec};
 use anyhow::{Context, Result};
 use futures_util::StreamExt;
 use reqwest::Client;
@@ -38,18 +38,43 @@ pub struct ToolCallFunction {
 
 #[derive(Debug, Serialize)]
 struct ChatCompletionRequest<'a> {
-    model: &'a str,
     messages: &'a [ChatMessage],
+    model: &'a str,
+    max_completion_tokens: usize,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    max_tokens: Option<usize>,
+    temperature: f32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    top_p: Option<f32>,
+    stream: bool,
+    stream_options: ChatCompletionStreamOptions,
     tools: &'a [ToolSpec],
     #[serde(skip_serializing_if = "Option::is_none")]
     tool_choice: Option<&'a str>,
     parallel_tool_calls: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
+    functions: Option<Vec<ToolFunctionSpec>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    function_call: Option<Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     reasoning_effort: Option<&'a str>,
     #[serde(skip_serializing_if = "Option::is_none")]
     enable_thinking: Option<bool>,
-    temperature: f32,
-    stream: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    thinking: Option<ChatCompletionThinking>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    audio: Option<Value>,
+}
+
+#[derive(Debug, Serialize)]
+struct ChatCompletionStreamOptions {
+    include_usage: bool,
+}
+
+#[derive(Debug, Serialize)]
+struct ChatCompletionThinking {
+    #[serde(rename = "type")]
+    thinking_type: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -107,6 +132,7 @@ pub async fn chat_completion_stream<F>(
     profile: &ProviderProfile,
     messages: &[ChatMessage],
     tools: &[ToolSpec],
+    tool_choice: Option<&str>,
     reasoning_effort: ReasoningEffort,
     mut on_delta: F,
 ) -> Result<ChatMessage>
@@ -116,15 +142,25 @@ where
     let api_key = profile.resolve_api_key()?;
     let endpoint = chat_completions_endpoint(&profile.base_url);
     let request = ChatCompletionRequest {
-        model: &profile.model,
         messages,
+        model: &profile.model,
+        max_completion_tokens: 16_384,
+        max_tokens: None,
+        temperature: 0.2,
+        top_p: None,
+        stream: true,
+        stream_options: ChatCompletionStreamOptions {
+            include_usage: true,
+        },
         tools,
-        tool_choice: None,
-        parallel_tool_calls: false,
+        tool_choice,
+        parallel_tool_calls: true,
+        functions: None,
+        function_call: None,
         reasoning_effort: reasoning_effort.as_request_value(),
         enable_thinking: reasoning_effort.enable_thinking_value(),
-        temperature: 0.2,
-        stream: true,
+        thinking: None,
+        audio: None,
     };
 
     let response = Client::new()
@@ -390,6 +426,7 @@ fn build_tool_calls(builders: BTreeMap<usize, ToolCallBuilder>) -> Vec<ToolCall>
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::tools::tool_specs;
 
     #[test]
     fn chat_endpoint_appends_chat_completions() {
@@ -405,6 +442,43 @@ mod tests {
             chat_completions_endpoint("https://api.example.com/v1/chat/completions"),
             "https://api.example.com/v1/chat/completions"
         );
+    }
+
+    #[test]
+    fn request_body_matches_openomnibot_chat_shape() {
+        let messages = vec![system_message(), user_message("hello")];
+        let tools = tool_specs();
+        let request = ChatCompletionRequest {
+            messages: &messages,
+            model: "model",
+            max_completion_tokens: 16_384,
+            max_tokens: None,
+            temperature: 0.2,
+            top_p: None,
+            stream: true,
+            stream_options: ChatCompletionStreamOptions {
+                include_usage: true,
+            },
+            tools: &tools,
+            tool_choice: Some("auto"),
+            parallel_tool_calls: true,
+            functions: None,
+            function_call: None,
+            reasoning_effort: Some("high"),
+            enable_thinking: None,
+            thinking: None,
+            audio: None,
+        };
+
+        let value = serde_json::to_value(request).unwrap();
+
+        assert_eq!(value["max_completion_tokens"], 16_384);
+        assert_eq!(value["stream_options"]["include_usage"], true);
+        assert_eq!(value["tool_choice"], "auto");
+        assert_eq!(value["parallel_tool_calls"], true);
+        assert_eq!(value["reasoning_effort"], "high");
+        assert!(value.get("functions").is_none());
+        assert!(value.get("function_call").is_none());
     }
 
     #[test]

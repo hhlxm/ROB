@@ -6,6 +6,7 @@ use tokio::process::Command;
 use tokio::time::{timeout, Duration};
 
 const MAX_OUTPUT_BYTES: usize = 16 * 1024;
+const TOOL_TITLE_FIELD: &str = "tool_title";
 
 #[derive(Debug, Clone, Serialize)]
 pub struct ToolSpec {
@@ -106,6 +107,7 @@ pub fn tool_context_prompt(specs: &[ToolSpec]) -> String {
         "Tool usage context for this turn:\n\
 - Use only tools provided in the current `tools` request field.\n\
 - Tool arguments must strictly match each tool JSON schema; include every required field.\n\
+- Every tool call must include `tool_title`, a short 4-12 word title in the same language as the user.\n\
 - Prefer specialized tools before `shell_exec`: use `pwd`, `list_dir`, `read_file`, or `search_text` when they fit.\n\
 - Use at most one tool call per model round unless calls are independent.\n\
 - After a tool result, inspect it before deciding whether another tool is needed.\n\
@@ -136,7 +138,7 @@ fn tool(name: &str, description: &str, parameters: Value) -> ToolSpec {
         function: ToolFunctionSpec {
             name: name.to_string(),
             description: description.to_string(),
-            parameters,
+            parameters: decorate_parameter_schema(parameters),
         },
     }
 }
@@ -150,6 +152,35 @@ fn required_fields(parameters: &Value) -> Vec<String> {
         .filter_map(Value::as_str)
         .map(ToString::to_string)
         .collect()
+}
+
+fn decorate_parameter_schema(mut parameters: Value) -> Value {
+    let Some(object) = parameters.as_object_mut() else {
+        return parameters;
+    };
+
+    let properties = object.entry("properties").or_insert_with(|| json!({}));
+    if let Some(properties) = properties.as_object_mut() {
+        properties.insert(
+            TOOL_TITLE_FIELD.to_string(),
+            json!({
+                "type": "string",
+                "description": "A short 4-12 word title for this tool call, in the same language as the user."
+            }),
+        );
+    }
+
+    let required = object
+        .entry("required")
+        .or_insert_with(|| Value::Array(Vec::new()));
+    if let Some(required) = required.as_array_mut() {
+        let has_tool_title = required.iter().any(|value| value == TOOL_TITLE_FIELD);
+        if !has_tool_title {
+            required.insert(0, Value::String(TOOL_TITLE_FIELD.to_string()));
+        }
+    }
+
+    parameters
 }
 
 fn list_dir(args: Value) -> Result<String> {
@@ -366,6 +397,7 @@ mod tests {
             .unwrap();
         let required = shell.function.parameters["required"].as_array().unwrap();
 
+        assert!(required.iter().any(|value| value == "tool_title"));
         assert!(required.iter().any(|value| value == "command"));
         assert!(required.iter().any(|value| value == "args"));
     }
@@ -375,8 +407,9 @@ mod tests {
         let prompt = tool_context_prompt(&tool_specs());
 
         assert!(prompt.contains("Tool arguments must strictly match"));
+        assert!(prompt.contains("tool_title"));
         assert!(prompt.contains("`shell_exec`"));
-        assert!(prompt.contains("Required: command, args"));
+        assert!(prompt.contains("Required: tool_title, command, args"));
         assert!(prompt.contains(r#""command":"uname""#));
     }
 

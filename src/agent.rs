@@ -159,6 +159,7 @@ impl AgentSession {
                 profile,
                 &request_messages,
                 &tools,
+                tool_choice_for_round(&self.messages),
                 self.config.reasoning.effort,
                 |delta| on_event(AgentEvent::AssistantDelta(delta.to_string())),
             )
@@ -372,6 +373,13 @@ fn invalid_tool_guidance(name: &str, error: &str, count: usize) -> String {
     )
 }
 
+fn tool_choice_for_round(messages: &[ChatMessage]) -> Option<&'static str> {
+    match messages.last().map(|message| message.role.as_str()) {
+        Some("tool") => None,
+        _ => Some("auto"),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -389,12 +397,24 @@ mod tests {
         let error = validate_tool_arguments(
             "shell_exec",
             &json!({
+                "tool_title": "检查内核版本",
                 "command": "uname",
                 "args": ["-a"]
             }),
         );
 
         assert!(error.is_none());
+    }
+
+    #[test]
+    fn omits_tool_choice_after_tool_result() {
+        let messages = vec![
+            system_message(),
+            user_message("cwd"),
+            tool_message("call_1".to_string(), "pwd".to_string(), "/tmp".to_string()),
+        ];
+
+        assert_eq!(tool_choice_for_round(&messages), None);
     }
 }
 

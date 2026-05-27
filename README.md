@@ -186,6 +186,8 @@ pwd, ls, cat, head, tail, wc, rg, find, date, uname, whoami, df, du, ps, env
 
 每次请求模型前，ROB 会像 OpenOmniBot 一样把工具使用规则和当前工具清单动态注入到运行上下文中，同时仍通过 OpenAI-compatible `tools` 字段传递完整 schema。这个运行上下文不会写入 session 历史。
 
+ROB 的 `/chat/completions` JSON body 也按 OpenOmniBot 的结构构建：`messages`、`model`、`max_completion_tokens`、`stream`、`stream_options.include_usage`、`tools`、按轮设置的 `tool_choice`、`parallel_tool_calls`，以及可选的 `reasoning_effort` / `enable_thinking`。工具 schema 会统一注入 `tool_title` 必填字段，便于模型为每次工具调用生成简短标题。
+
 ## 工具审批策略
 
 默认策略是 `auto`，表示模型请求的 allowlisted 工具会自动执行。
