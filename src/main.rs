@@ -3,6 +3,7 @@ mod config;
 mod llm;
 mod state;
 mod tools;
+mod tui;
 
 use anyhow::Result;
 use clap::{Parser, Subcommand};
@@ -25,6 +26,18 @@ enum Command {
     },
     /// Start an interactive agent chat.
     Chat {
+        /// Override the configured model for this session.
+        #[arg(long)]
+        model: Option<String>,
+        /// Resume a saved session id.
+        #[arg(long)]
+        resume: Option<String>,
+        /// Override the tool approval policy for this session.
+        #[arg(long)]
+        approval: Option<ApprovalPolicy>,
+    },
+    /// Start the terminal UI agent chat.
+    Tui {
         /// Override the configured model for this session.
         #[arg(long)]
         model: Option<String>,
@@ -129,6 +142,14 @@ async fn main() -> Result<()> {
         } => {
             let config = RobConfig::load_or_default()?;
             agent::run_repl(config, model, resume, approval).await
+        }
+        Command::Tui {
+            model,
+            resume,
+            approval,
+        } => {
+            let config = RobConfig::load_or_default()?;
+            tui::run_tui(config, model, resume, approval).await
         }
         Command::Ask {
             message,

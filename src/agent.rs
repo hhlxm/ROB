@@ -113,6 +113,10 @@ impl AgentSession {
         &self.id
     }
 
+    pub fn transcript(&self) -> &[ChatMessage] {
+        &self.messages
+    }
+
     pub fn config_summary(&self) -> Result<String> {
         let profile = self.config.active_profile()?;
         Ok(format!(
