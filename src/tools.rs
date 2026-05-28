@@ -7,6 +7,124 @@ use tokio::time::{timeout, Duration};
 
 const MAX_OUTPUT_BYTES: usize = 16 * 1024;
 const TOOL_TITLE_FIELD: &str = "tool_title";
+const HOME_FLOORS: &[&str] = &[
+    "一楼",
+    "二楼",
+    "三楼",
+    "四楼",
+    "五楼",
+    "阁楼",
+    "地下室",
+    "夹层",
+    "屋顶花园",
+    "楼顶",
+    "顶楼",
+    "负一楼",
+    "地下一层",
+];
+const HOME_ROOMS: &[&str] = &[
+    "客厅",
+    "餐厅",
+    "主卧",
+    "次卧",
+    "儿童房",
+    "长辈房",
+    "书房",
+    "厨房",
+    "卫生间",
+    "阳台",
+    "衣帽间",
+    "玄关",
+    "走廊",
+    "储藏室",
+    "车库",
+    "健身房",
+    "影音室",
+    "娱乐室",
+    "洗衣房",
+    "茶室",
+    "棋牌室",
+    "瑜伽室",
+    "宠物房",
+    "停车场",
+    "电竞房",
+    "全屋",
+];
+const LIGHT_DEVICE_NAMES: &[&str] = &[
+    "灯",
+    "主灯",
+    "吸顶灯",
+    "筒灯",
+    "射灯",
+    "灯带",
+    "彩光灯带",
+    "彩光灯",
+    "客厅灯",
+    "卧室灯",
+    "灯泡",
+    "球泡灯",
+    "色温灯",
+    "调光灯",
+    "床头灯",
+    "台灯",
+    "夜灯",
+];
+const CURTAIN_DEVICE_NAMES: &[&str] = &[
+    "窗帘",
+    "窗帘电机",
+    "智能窗帘",
+    "智能窗帘电机",
+    "开窗器",
+    "卷帘",
+    "卷帘电机",
+    "开合帘",
+    "百叶窗",
+    "客厅窗帘",
+    "卧室窗帘",
+    "窗帘伴侣",
+    "梦幻帘",
+];
+const POWER_DEVICE_NAMES: &[&str] = &[
+    "插座",
+    "智能插座",
+    "插头",
+    "开关插座",
+    "计量插座",
+    "墙壁插座",
+    "开关",
+    "一路开关",
+    "二路开关",
+    "三路开关",
+    "一键开关",
+    "二键开关",
+    "三键开关",
+    "单开",
+    "双开",
+    "三开",
+    "墙壁开关",
+    "零火开关",
+    "单火开关",
+    "场景开关",
+    "无线开关",
+    "通断器",
+];
+const SCENE_NAMES: &[&str] = &[
+    "回家模式",
+    "离家模式",
+    "睡眠模式",
+    "起床模式",
+    "电影模式",
+    "用餐模式",
+    "会客模式",
+    "阅读模式",
+    "浪漫模式",
+    "派对模式",
+    "节能模式",
+    "安防模式",
+    "通风模式",
+    "度假模式",
+    "宠物模式",
+];
 
 #[derive(Debug, Clone, Serialize)]
 pub struct ToolSpec {
@@ -88,6 +206,152 @@ pub fn tool_specs() -> Vec<ToolSpec> {
                 "additionalProperties": false
             }),
         ),
+        tool(
+            "smart_home_control_speaker",
+            "Submit a normalized smart-home command for speaker volume control. Use this for volume up/down, mute, or setting an exact volume.",
+            json!({
+                "type": "object",
+                "properties": {
+                    "floor": { "type": "string", "enum": HOME_FLOORS, "description": "楼层。用户未说明时省略。" },
+                    "room": { "type": "string", "enum": HOME_ROOMS, "description": "房间。全屋控制时使用“全屋”；用户未说明时省略。" },
+                    "device_name": { "type": "string", "description": "设备名称或别名，例如“扬声器”“音箱”“NAS”。用户未说明时可省略。" },
+                    "action": {
+                        "type": "string",
+                        "enum": ["increase_volume", "decrease_volume", "mute", "set_volume"],
+                        "description": "音量调大、调小、静音或设置指定音量。"
+                    },
+                    "delta_percent": { "type": "integer", "minimum": 0, "maximum": 100, "description": "相对调节百分比。普通调大/调小默认填 10。" },
+                    "volume_percent": { "type": "integer", "minimum": 0, "maximum": 100, "description": "目标音量百分比。静音时填 0；设置指定音量时必填。" }
+                },
+                "required": ["action"],
+                "additionalProperties": false
+            }),
+        ),
+        tool(
+            "smart_home_control_light",
+            "Submit a normalized smart-home command for light control, including power, brightness, color temperature, tone, and RGB color.",
+            json!({
+                "type": "object",
+                "properties": {
+                    "floor": { "type": "string", "enum": HOME_FLOORS, "description": "楼层。用户未说明时省略。" },
+                    "room": { "type": "string", "enum": HOME_ROOMS, "description": "房间。全屋控制时使用“全屋”；用户未说明时省略。" },
+                    "device_name": { "type": "string", "enum": LIGHT_DEVICE_NAMES, "description": "灯具名称，例如主灯、吸顶灯、筒灯、灯带、床头灯、台灯、夜灯。" },
+                    "action": {
+                        "type": "string",
+                        "enum": [
+                            "turn_on",
+                            "turn_off",
+                            "increase_brightness",
+                            "decrease_brightness",
+                            "set_brightness",
+                            "increase_color_temperature",
+                            "decrease_color_temperature",
+                            "set_color_temperature",
+                            "set_light_tone",
+                            "set_color"
+                        ],
+                        "description": "灯光开关、亮度、色温、光色或颜色控制动作。"
+                    },
+                    "delta_percent": { "type": "integer", "minimum": 0, "maximum": 100, "description": "亮度相对调节百分比。普通调亮/调暗默认填 20。" },
+                    "brightness_percent": { "type": "integer", "minimum": 0, "maximum": 100, "description": "目标亮度百分比。设置指定亮度时必填。" },
+                    "delta_kelvin": { "type": "integer", "minimum": 0, "maximum": 6000, "description": "色温相对调节值。普通调冷/调暖默认填 500。" },
+                    "color_temperature_kelvin": { "type": "integer", "minimum": 0, "maximum": 6000, "description": "目标色温 K。暖光 3000，中性光/自然光 4000，白光/冷光 6000。" },
+                    "light_tone": {
+                        "type": "string",
+                        "enum": ["warm", "neutral", "natural", "white", "cool"],
+                        "description": "用户要求调成暖光、中性光、自然光、白光或冷光时使用。"
+                    },
+                    "color_name": {
+                        "type": "string",
+                        "enum": ["红色", "橙色", "黄色", "绿色", "青色", "蓝色", "紫色"],
+                        "description": "目标颜色名称。"
+                    },
+                    "rgb": {
+                        "type": "object",
+                        "properties": {
+                            "r": { "type": "integer", "minimum": 0, "maximum": 255 },
+                            "g": { "type": "integer", "minimum": 0, "maximum": 255 },
+                            "b": { "type": "integer", "minimum": 0, "maximum": 255 }
+                        },
+                        "required": ["r", "g", "b"],
+                        "additionalProperties": false,
+                        "description": "目标 RGB 颜色值。"
+                    }
+                },
+                "required": ["action"],
+                "additionalProperties": false
+            }),
+        ),
+        tool(
+            "smart_home_control_curtain",
+            "Submit a normalized smart-home command for curtains, blinds, rollers, and openers.",
+            json!({
+                "type": "object",
+                "properties": {
+                    "floor": { "type": "string", "enum": HOME_FLOORS, "description": "楼层。用户未说明时省略。" },
+                    "room": { "type": "string", "enum": HOME_ROOMS, "description": "房间。全屋控制时使用“全屋”；用户未说明时省略。" },
+                    "device_name": { "type": "string", "enum": CURTAIN_DEVICE_NAMES, "description": "窗帘设备名称，例如窗帘、卷帘、百叶窗、梦幻帘。" },
+                    "action": {
+                        "type": "string",
+                        "enum": ["open", "close", "stop", "set_position", "set_angle"],
+                        "description": "打开、关闭、停止、设置开合度或设置百叶窗角度。"
+                    },
+                    "position_percent": { "type": "integer", "minimum": 0, "maximum": 100, "description": "窗帘开合度百分比。设置开合度时必填。" },
+                    "angle_degree": { "type": "integer", "minimum": 0, "maximum": 180, "description": "百叶窗角度。设置角度时必填。" }
+                },
+                "required": ["action"],
+                "additionalProperties": false
+            }),
+        ),
+        tool(
+            "smart_home_control_power",
+            "Submit a normalized smart-home command for outlets and wall switches.",
+            json!({
+                "type": "object",
+                "properties": {
+                    "floor": { "type": "string", "enum": HOME_FLOORS, "description": "楼层。用户未说明时省略。" },
+                    "room": { "type": "string", "enum": HOME_ROOMS, "description": "房间。全屋控制时使用“全屋”；用户未说明时省略。" },
+                    "device_category": {
+                        "type": "string",
+                        "enum": ["outlet", "wall_switch"],
+                        "description": "插座/智能插头使用 outlet；墙壁开关/一路开关/双开/通断器等使用 wall_switch。"
+                    },
+                    "device_name": {
+                        "type": "string",
+                        "enum": POWER_DEVICE_NAMES,
+                        "description": "设备名称，例如智能插座、计量插座、一路开关、双开、墙壁开关。"
+                    },
+                    "action": {
+                        "type": "string",
+                        "enum": ["turn_on", "turn_off"],
+                        "description": "打开或关闭。"
+                    }
+                },
+                "required": ["device_category", "action"],
+                "additionalProperties": false
+            }),
+        ),
+        tool(
+            "smart_home_control_scene",
+            "Submit a normalized smart-home command to activate or deactivate a predefined home scene mode.",
+            json!({
+                "type": "object",
+                "properties": {
+                    "scene_name": {
+                        "type": "string",
+                        "enum": SCENE_NAMES,
+                        "description": "场景模式名称。"
+                    },
+                    "action": {
+                        "type": "string",
+                        "enum": ["activate", "deactivate"],
+                        "description": "打开/设置/执行/启动场景使用 activate；关闭/退出/停止场景使用 deactivate。"
+                    }
+                },
+                "required": ["scene_name", "action"],
+                "additionalProperties": false
+            }),
+        ),
     ]
 }
 
@@ -111,6 +375,11 @@ pub async fn run_tool(name: &str, args: Value) -> Result<String> {
         "read_file" => read_file(args),
         "search_text" => search_text(args).await,
         "shell_exec" => shell_exec(args).await,
+        "smart_home_control_speaker"
+        | "smart_home_control_light"
+        | "smart_home_control_curtain"
+        | "smart_home_control_power"
+        | "smart_home_control_scene" => smart_home_command(name, args),
         _ => Err(anyhow!("unknown tool `{name}`")),
     }
 }
@@ -262,6 +531,15 @@ async fn shell_exec(args: Value) -> Result<String> {
         .context("command timed out")?
         .with_context(|| format!("failed to run {command}"))?;
     command_output(output)
+}
+
+fn smart_home_command(name: &str, args: Value) -> Result<String> {
+    Ok(serde_json::to_string_pretty(&json!({
+        "status": "accepted",
+        "tool": name,
+        "command": args,
+        "note": "normalized smart-home command payload; map this to the real home gateway integration"
+    }))?)
 }
 
 fn command_output(output: std::process::Output) -> Result<String> {
@@ -416,6 +694,31 @@ mod tests {
     }
 
     #[test]
+    fn smart_home_light_schema_exposes_locations_and_actions() {
+        let specs = tool_specs();
+        let light = specs
+            .iter()
+            .find(|spec| spec.function.name == "smart_home_control_light")
+            .unwrap();
+
+        assert!(light.function.parameters["properties"]["floor"]["enum"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|value| value == "一楼"));
+        assert!(light.function.parameters["properties"]["room"]["enum"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|value| value == "全屋"));
+        assert!(light.function.parameters["properties"]["action"]["enum"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|value| value == "set_color"));
+    }
+
+    #[test]
     fn tool_context_prompt_includes_schema_guidance() {
         let prompt = tool_context_prompt(&tool_specs());
 
@@ -431,5 +734,22 @@ mod tests {
         let result = run_tool("pwd", json!({})).await.unwrap();
 
         assert!(result.contains("ROB"));
+    }
+
+    #[tokio::test]
+    async fn smart_home_tool_returns_normalized_payload() {
+        let result = run_tool(
+            "smart_home_control_scene",
+            json!({
+                "tool_title": "打开回家模式",
+                "scene_name": "回家模式",
+                "action": "activate"
+            }),
+        )
+        .await
+        .unwrap();
+
+        assert!(result.contains("smart_home_control_scene"));
+        assert!(result.contains("回家模式"));
     }
 }

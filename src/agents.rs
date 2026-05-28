@@ -11,6 +11,18 @@ When using shell_exec, pass a command and argv array; never assume shell expansi
 const READER_AGENT_PROMPT: &str = "You are ROB Reader, a read-only Linux inspection agent. \
 Use read-only tools to inspect files, directories, and text. Do not attempt to execute shell commands.";
 
+const SMART_HOME_AGENT_PROMPT: &str = "你是 ROB Smart Home，一个智能家居控制 agent。\
+你的任务是把用户的自然语言指令解析成明确、可执行的智能家居工具调用。\
+优先使用智能家居专用工具，不要使用 Linux shell 工具。\
+当用户要控制设备时，提取楼层、房间、设备名称、动作和值；用户未说明楼层或房间时不要编造，可省略对应字段。\
+当用户说“全屋”时，把 room 设置为“全屋”。\
+默认调节步长：扬声器音量调大/调小为 10%，灯光亮度调大/调小为 20%，灯光色温调冷/调暖为 500K。\
+灯光色调映射：暖光/暖色调为 3000K，中性光/自然光为 4000K，白光/冷光/冷色调为 6000K。\
+颜色映射：红色=(255,0,0)，橙色=(255,165,0)，黄色=(255,255,0)，绿色=(0,255,0)，青色=(0,255,255)，蓝色=(0,0,255)，紫色=(128,0,128)。\
+如果用户同时给出多个独立控制目标，可以发起多个独立工具调用。\
+如果缺少执行所必需的信息且无法合理省略，先用简短中文追问。\
+工具调用后，用简洁中文确认已提交的控制意图。";
+
 #[derive(Debug, Clone)]
 pub struct AgentDefinition {
     pub name: &'static str,
@@ -46,6 +58,18 @@ pub fn builtin_agents() -> Vec<AgentDefinition> {
             description: "Read-only inspection agent without shell execution.",
             system_prompt: READER_AGENT_PROMPT,
             tool_names: &["pwd", "list_dir", "read_file", "search_text"],
+        },
+        AgentDefinition {
+            name: "smart_home",
+            description: "Smart home control agent for lights, curtains, speakers, outlets, switches, and scenes.",
+            system_prompt: SMART_HOME_AGENT_PROMPT,
+            tool_names: &[
+                "smart_home_control_speaker",
+                "smart_home_control_light",
+                "smart_home_control_curtain",
+                "smart_home_control_power",
+                "smart_home_control_scene",
+            ],
         },
     ]
 }
@@ -103,5 +127,14 @@ mod tests {
         assert!(agent.system_prompt.contains("ROB Reader"));
         assert!(tool_names.contains(&"read_file"));
         assert!(!tool_names.contains(&"shell_exec"));
+    }
+
+    #[test]
+    fn smart_home_agent_has_dedicated_prompt_and_tools() {
+        let agent = resolve_agent(Some("smart_home")).unwrap();
+
+        assert!(agent.system_prompt.contains("智能家居控制 agent"));
+        assert!(agent.tool_names().contains(&"smart_home_control_light"));
+        assert!(!agent.tool_names().contains(&"shell_exec"));
     }
 }

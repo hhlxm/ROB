@@ -155,6 +155,7 @@ ROB 支持多个 agent。每个 agent 都有自己的 system prompt 和可用工
 
 - `main`：默认 Linux agent，保留此前 ROB 的 prompt 和完整工具集合。
 - `reader`：只读检查 agent，使用独立 prompt，只暴露 `pwd`、`list_dir`、`read_file`、`search_text`。
+- `smart_home`：智能家居控制 agent，使用中文 prompt，只暴露灯光、窗帘、扬声器、插座/墙壁开关、场景模式等专用控制工具。
 
 查看 agent：
 
@@ -162,6 +163,7 @@ ROB 支持多个 agent。每个 agent 都有自己的 system prompt 和可用工
 cargo run -- agents list
 cargo run -- agents show main
 cargo run -- agents show reader
+cargo run -- agents show smart_home
 ```
 
 指定 agent：
@@ -170,6 +172,7 @@ cargo run -- agents show reader
 cargo run -- ask "查看 README 的主要内容" --agent reader
 cargo run -- chat --agent main
 cargo run -- tui --agent reader
+cargo run -- ask "把一楼客厅主灯亮度调到 50%" --agent smart_home
 ```
 
 恢复 session 时，如果没有传 `--agent`，ROB 会根据 session 第一条 system prompt 识别对应 agent；如果显式传入 `--agent`，则以当前参数为准。
@@ -218,6 +221,22 @@ pwd, ls, cat, head, tail, wc, rg, find, date, uname, whoami, df, du, ps, env
 每次请求模型前，ROB 会像 OpenOmniBot 一样按当前 agent 把工具使用规则和工具清单动态注入到运行上下文中，同时仍通过 OpenAI-compatible `tools` 字段传递该 agent 的工具 schema。这个运行上下文不会写入 session 历史。
 
 ROB 的 `/chat/completions` JSON body 也按 OpenOmniBot 的结构构建：`messages`、`model`、`max_completion_tokens`、`stream`、`stream_options.include_usage`、`tools`、按轮设置的 `tool_choice`、`parallel_tool_calls`，以及可选的 `reasoning_effort` / `enable_thinking`。工具 schema 会统一注入 `tool_title` 必填字段，便于模型为每次工具调用生成简短标题。
+
+智能家居 agent 的专用工具：
+
+- `smart_home_control_speaker`：扬声器音量调大、调小、静音、设置指定音量。
+- `smart_home_control_light`：灯光开关、亮度、色温、暖光/自然光/冷光、RGB 颜色。
+- `smart_home_control_curtain`：窗帘打开、关闭、停止、设置开合度、设置百叶窗角度。
+- `smart_home_control_power`：插座、智能插头、墙壁开关打开或关闭。
+- `smart_home_control_scene`：打开/设置/执行或关闭/退出预定义场景模式。
+
+这些工具当前返回规范化控制 payload，方便后续接入 Home Assistant、米家网关或自研 IoT 服务。示例：
+
+```bash
+cargo run -- tools list --agent smart_home
+cargo run -- tools run smart_home_control_light '{"floor":"一楼","room":"客厅","device_name":"主灯","action":"set_brightness","brightness_percent":50}'
+cargo run -- tools run smart_home_control_scene '{"scene_name":"回家模式","action":"activate"}'
+```
 
 ## 工具审批策略
 
