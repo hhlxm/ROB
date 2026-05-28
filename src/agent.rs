@@ -14,9 +14,7 @@ use std::collections::HashMap;
 use std::io::{self, Write};
 use uuid::Uuid;
 
-const MAX_TOOL_ROUNDS: usize = 6;
 const TOOL_DENIED_MESSAGE: &str = "tool denied by approval policy";
-const TOOL_ROUND_LIMIT_MESSAGE: &str = "Stopped after reaching the tool-call round limit.";
 const INVALID_TOOL_REPEAT_LIMIT: usize = 2;
 
 #[derive(Debug, Clone)]
@@ -139,7 +137,7 @@ impl AgentSession {
         self.persist()?;
         let mut invalid_tool_counts = HashMap::new();
 
-        for round in 0..MAX_TOOL_ROUNDS {
+        loop {
             let profile = self.config.active_profile()?;
             let tools = tool_specs();
             let tool_context = tool_context_prompt(&tools);
@@ -186,18 +184,8 @@ impl AgentSession {
                 }
             }
 
-            if round + 1 == MAX_TOOL_ROUNDS {
-                self.messages
-                    .push(assistant_text_message(TOOL_ROUND_LIMIT_MESSAGE));
-                self.persist()?;
-                on_event(AgentEvent::AssistantDelta(
-                    TOOL_ROUND_LIMIT_MESSAGE.to_string(),
-                ))?;
-                return Ok(TOOL_ROUND_LIMIT_MESSAGE.to_string());
-            }
+            invalid_tool_counts.clear();
         }
-
-        unreachable!("tool-call loop returns when the round limit is reached")
     }
 
     pub fn id(&self) -> &str {
