@@ -225,7 +225,8 @@ ROB 的 `/chat/completions` JSON body 也按 OpenOmniBot 的结构构建：`mess
 智能家居 agent 的专用工具：
 
 - `smart_home_control_speaker`：扬声器音量调大、调小、静音、设置指定音量。
-- `smart_home_control_light`：灯光开关、亮度、色温、暖光/自然光/冷光、RGB 颜色。
+- `smart_home_control_light`：灯光开关、亮度、RGB 颜色。
+- `smart_home_control_light_temperature`：灯光色温、暖光/自然光/冷光等光色控制。
 - `smart_home_control_curtain`：窗帘打开、关闭、停止、设置开合度、设置百叶窗角度。
 - `smart_home_control_power`：插座、智能插头、墙壁开关打开或关闭。
 - `smart_home_control_scene`：打开/设置/执行或关闭/退出预定义场景模式。

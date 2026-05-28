@@ -229,7 +229,7 @@ pub fn tool_specs() -> Vec<ToolSpec> {
         ),
         tool(
             "smart_home_control_light",
-            "Submit a normalized smart-home command for light control, including power, brightness, color temperature, tone, and RGB color.",
+            "Submit a normalized smart-home command for light power, brightness, and RGB color. For color temperature or warm/neutral/white/cool tone, prefer smart_home_control_light_temperature.",
             json!({
                 "type": "object",
                 "properties": {
@@ -254,12 +254,12 @@ pub fn tool_specs() -> Vec<ToolSpec> {
                     },
                     "delta_percent": { "type": "integer", "minimum": 0, "maximum": 100, "description": "亮度相对调节百分比。普通调亮/调暗默认填 20。" },
                     "brightness_percent": { "type": "integer", "minimum": 0, "maximum": 100, "description": "目标亮度百分比。设置指定亮度时必填。" },
-                    "delta_kelvin": { "type": "integer", "minimum": 0, "maximum": 6000, "description": "色温相对调节值。普通调冷/调暖默认填 500。" },
-                    "color_temperature_kelvin": { "type": "integer", "minimum": 0, "maximum": 6000, "description": "目标色温 K。暖光 3000，中性光/自然光 4000，白光/冷光 6000。" },
+                    "delta_kelvin": { "type": "integer", "minimum": 0, "maximum": 6000, "description": "色温相对调节值，必须填写完整 K 数值，不要除以 10。普通调冷/调暖默认填 500；调高 1000K 填 1000；上调 1200K 填 1200。" },
+                    "color_temperature_kelvin": { "type": "integer", "minimum": 1000, "maximum": 6000, "description": "目标色温 K，必须填写完整 K 数值，不要除以 10。3000K 填 3000，4000K 填 4000，6000K 填 6000；不要写 300/400/600。" },
                     "light_tone": {
                         "type": "string",
                         "enum": ["warm", "neutral", "natural", "white", "cool"],
-                        "description": "用户要求调成暖光、中性光、自然光、白光或冷光时使用。"
+                        "description": "用户要求调成暖光、中性光、自然光、白光或冷光时使用，并同时填写完整 color_temperature_kelvin：warm=3000，neutral/natural=4000，white/cool=6000。"
                     },
                     "color_name": {
                         "type": "string",
@@ -276,6 +276,45 @@ pub fn tool_specs() -> Vec<ToolSpec> {
                         "required": ["r", "g", "b"],
                         "additionalProperties": false,
                         "description": "目标 RGB 颜色值。"
+                    }
+                },
+                "required": ["action"],
+                "additionalProperties": false
+            }),
+        ),
+        tool(
+            "smart_home_control_light_temperature",
+            "Submit a normalized smart-home command for light color temperature and tone. Use this for 色温, 调冷, 调暖, 暖光, 中性光, 自然光, 白光, or 冷光. Kelvin values must be full integer K values: 1000K => 1000, 4000K => 4000, never 100 or 400.",
+            json!({
+                "type": "object",
+                "properties": {
+                    "floor": { "type": "string", "enum": HOME_FLOORS, "description": "楼层。用户未说明时省略。" },
+                    "room": { "type": "string", "enum": HOME_ROOMS, "description": "房间。全屋控制时使用“全屋”；用户未说明时省略。" },
+                    "device_name": { "type": "string", "enum": LIGHT_DEVICE_NAMES, "description": "灯具名称，例如主灯、吸顶灯、筒灯、灯带、床头灯、台灯、夜灯。" },
+                    "action": {
+                        "type": "string",
+                        "enum": [
+                            "increase_color_temperature",
+                            "decrease_color_temperature",
+                            "set_color_temperature",
+                            "set_light_tone"
+                        ],
+                        "description": "色温调冷/调高、色温调暖/调低、设置指定色温，或设置暖光/中性光/自然光/白光/冷光。"
+                    },
+                    "delta_kelvin": {
+                        "type": "integer",
+                        "enum": [500, 600, 800, 1000, 1200],
+                        "description": "色温相对调节值。普通调冷/调暖默认填 500；调高 1000K 填 1000；上调 1200K 填 1200。必须填完整 K 数值，不要写 100/120。"
+                    },
+                    "color_temperature_kelvin": {
+                        "type": "integer",
+                        "enum": [3000, 3500, 4000, 4500, 5000, 6000],
+                        "description": "目标色温 K。3000K 填 3000，3500K 填 3500，4000K 填 4000，4500K 填 4500，5000K 填 5000，6000K 填 6000。不要写 300/350/400/450/500/600。"
+                    },
+                    "light_tone": {
+                        "type": "string",
+                        "enum": ["warm", "neutral", "natural", "white", "cool"],
+                        "description": "暖光=warm 且 color_temperature_kelvin=3000；中性光=neutral 且 4000；自然光=natural 且 4000；白光=white 且 6000；冷光=cool 且 6000。"
                     }
                 },
                 "required": ["action"],
@@ -376,6 +415,7 @@ pub async fn run_tool(name: &str, args: Value) -> Result<String> {
         "search_text" => search_text(args).await,
         "shell_exec" => shell_exec(args).await,
         "smart_home_control_speaker"
+        | "smart_home_control_light_temperature"
         | "smart_home_control_light"
         | "smart_home_control_curtain"
         | "smart_home_control_power"
@@ -533,13 +573,74 @@ async fn shell_exec(args: Value) -> Result<String> {
     command_output(output)
 }
 
-fn smart_home_command(name: &str, args: Value) -> Result<String> {
+fn smart_home_command(name: &str, mut args: Value) -> Result<String> {
+    normalize_smart_home_args(name, &mut args);
     Ok(serde_json::to_string_pretty(&json!({
         "status": "accepted",
         "tool": name,
         "command": args,
         "note": "normalized smart-home command payload; map this to the real home gateway integration"
     }))?)
+}
+
+fn normalize_smart_home_args(name: &str, args: &mut Value) {
+    if !matches!(
+        name,
+        "smart_home_control_light" | "smart_home_control_light_temperature"
+    ) {
+        return;
+    }
+    let Some(object) = args.as_object_mut() else {
+        return;
+    };
+
+    match object.get("action").and_then(Value::as_str) {
+        Some("set_light_tone") => normalize_light_tone_kelvin(object),
+        Some("set_color_temperature") => scale_kelvin_field(object, "color_temperature_kelvin"),
+        Some("increase_color_temperature") | Some("decrease_color_temperature") => {
+            scale_common_delta_kelvin(object)
+        }
+        _ => {}
+    }
+}
+
+fn normalize_light_tone_kelvin(object: &mut serde_json::Map<String, Value>) {
+    let kelvin = match object.get("light_tone").and_then(Value::as_str) {
+        Some("warm") => Some(3000),
+        Some("neutral") | Some("natural") => Some(4000),
+        Some("white") | Some("cool") => Some(6000),
+        _ => None,
+    };
+
+    if let Some(kelvin) = kelvin {
+        object.insert(
+            "color_temperature_kelvin".to_string(),
+            Value::Number(kelvin.into()),
+        );
+    } else {
+        scale_kelvin_field(object, "color_temperature_kelvin");
+    }
+}
+
+fn scale_kelvin_field(object: &mut serde_json::Map<String, Value>, field: &str) {
+    let Some(value) = object.get(field).and_then(Value::as_i64) else {
+        return;
+    };
+    if (100..=600).contains(&value) {
+        object.insert(field.to_string(), Value::Number((value * 10).into()));
+    }
+}
+
+fn scale_common_delta_kelvin(object: &mut serde_json::Map<String, Value>) {
+    let Some(value) = object.get("delta_kelvin").and_then(Value::as_i64) else {
+        return;
+    };
+    if matches!(value, 100 | 120) {
+        object.insert(
+            "delta_kelvin".to_string(),
+            Value::Number((value * 10).into()),
+        );
+    }
 }
 
 fn command_output(output: std::process::Output) -> Result<String> {
@@ -716,6 +817,40 @@ mod tests {
             .unwrap()
             .iter()
             .any(|value| value == "set_color"));
+        assert!(
+            light.function.parameters["properties"]["color_temperature_kelvin"]["description"]
+                .as_str()
+                .unwrap()
+                .contains("不要写 300/400/600")
+        );
+    }
+
+    #[test]
+    fn smart_home_temperature_schema_uses_full_kelvin_enums() {
+        let specs = tool_specs();
+        let temperature = specs
+            .iter()
+            .find(|spec| spec.function.name == "smart_home_control_light_temperature")
+            .unwrap();
+
+        assert!(temperature
+            .function
+            .description
+            .contains("never 100 or 400"));
+        assert!(
+            temperature.function.parameters["properties"]["delta_kelvin"]["enum"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|value| value == 1200)
+        );
+        assert!(
+            temperature.function.parameters["properties"]["color_temperature_kelvin"]["enum"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|value| value == 4000)
+        );
     }
 
     #[test]
@@ -751,5 +886,44 @@ mod tests {
 
         assert!(result.contains("smart_home_control_scene"));
         assert!(result.contains("回家模式"));
+    }
+
+    #[tokio::test]
+    async fn smart_home_light_normalizes_common_kelvin_short_forms() {
+        let absolute = run_tool(
+            "smart_home_control_light_temperature",
+            json!({
+                "tool_title": "设置色温",
+                "action": "set_color_temperature",
+                "color_temperature_kelvin": 400
+            }),
+        )
+        .await
+        .unwrap();
+        let tone = run_tool(
+            "smart_home_control_light_temperature",
+            json!({
+                "tool_title": "设置冷光",
+                "action": "set_light_tone",
+                "light_tone": "cool",
+                "color_temperature_kelvin": 600
+            }),
+        )
+        .await
+        .unwrap();
+        let delta = run_tool(
+            "smart_home_control_light_temperature",
+            json!({
+                "tool_title": "调大色温",
+                "action": "increase_color_temperature",
+                "delta_kelvin": 120
+            }),
+        )
+        .await
+        .unwrap();
+
+        assert!(absolute.contains(r#""color_temperature_kelvin": 4000"#));
+        assert!(tone.contains(r#""color_temperature_kelvin": 6000"#));
+        assert!(delta.contains(r#""delta_kelvin": 1200"#));
     }
 }

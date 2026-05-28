@@ -84,13 +84,18 @@ pub fn inject_runtime_context(messages: &[ChatMessage], runtime_context: &str) -
     }
 
     let mut prepared = Vec::with_capacity(messages.len() + 1);
-    if let Some(system) = messages
+    if let Some(mut system) = messages
         .first()
         .filter(|message| message.role == "system")
         .cloned()
     {
+        let content = system.content.unwrap_or_default();
+        system.content = Some(if content.trim().is_empty() {
+            context.to_string()
+        } else {
+            format!("{content}\n\n{context}")
+        });
         prepared.push(system);
-        prepared.push(system_text_message(context));
         prepared.extend_from_slice(&messages[1..]);
     } else {
         prepared.push(system_text_message(context));
@@ -295,8 +300,11 @@ mod tests {
             .as_deref()
             .unwrap()
             .contains("You are ROB"));
-        assert_eq!(prepared[1].role, "system");
-        assert_eq!(prepared[1].content.as_deref(), Some("runtime tools"));
-        assert_eq!(prepared[2].role, "user");
+        assert!(prepared[0]
+            .content
+            .as_deref()
+            .unwrap()
+            .contains("runtime tools"));
+        assert_eq!(prepared[1].role, "user");
     }
 }
