@@ -45,8 +45,9 @@ struct TuiApp {
     input: String,
     lines: Vec<Line<'static>>,
     streaming_assistant: Option<String>,
+    header: String,
     status: String,
-    scroll: u16,
+    scroll_back: u16,
 }
 
 impl TuiApp {
@@ -55,8 +56,13 @@ impl TuiApp {
             input: String::new(),
             lines: Vec::new(),
             streaming_assistant: None,
-            status: format!("Session {} | {}", session.id(), session.config_summary()?),
-            scroll: 0,
+            header: format!(
+                "ROB | session {} | {}",
+                session.id(),
+                session.config_summary()?
+            ),
+            status: "Ready".to_string(),
+            scroll_back: 0,
         };
 
         for message in session.transcript() {
@@ -103,15 +109,15 @@ impl TuiApp {
 
     fn push_system(&mut self, content: &str) {
         self.lines.push(Line::from(vec![
-            Span::styled("system", Style::default().fg(Color::Yellow)),
-            Span::raw("  "),
-            Span::raw(content.to_string()),
+            Span::styled("- ", Style::default().fg(Color::DarkGray)),
+            Span::styled("system ", Style::default().fg(Color::Yellow)),
+            Span::styled(content.to_string(), Style::default().fg(Color::DarkGray)),
         ]));
         self.lines.push(Line::raw(""));
     }
 
     fn push_message(&mut self, role: &str, content: &str) {
-        self.lines.push(message_line(role, content));
+        self.lines.extend(message_lines(role, content));
         self.lines.push(Line::raw(""));
     }
 
@@ -153,26 +159,20 @@ impl TuiApp {
         let (status_text, color) = status.display();
         self.lines.push(Line::from(vec![
             Span::styled(
-                "tool",
-                Style::default()
-                    .fg(Color::Magenta)
-                    .add_modifier(Modifier::BOLD),
+                "- ",
+                Style::default().fg(color).add_modifier(Modifier::BOLD),
             ),
-            Span::raw("  "),
             Span::styled(
                 status_text,
                 Style::default().fg(color).add_modifier(Modifier::BOLD),
             ),
             Span::raw(" "),
-            Span::styled(name.to_string(), Style::default().fg(Color::White)),
-            Span::raw(format!("  #{id}")),
+            Span::styled(name.to_string(), Style::default().fg(Color::Cyan)),
+            Span::styled(format!("  #{id}"), Style::default().fg(Color::DarkGray)),
         ]));
 
         if let Some(detail) = detail.filter(|detail| !detail.trim().is_empty()) {
-            self.lines.push(Line::from(vec![
-                Span::raw("      "),
-                Span::styled(detail, Style::default().fg(Color::DarkGray)),
-            ]));
+            self.lines.extend(detail_lines(&detail));
         }
 
         self.lines.push(Line::raw(""));
@@ -263,17 +263,21 @@ impl TuiApp {
     fn display_lines(&self) -> Vec<Line<'static>> {
         let mut lines = self.lines.clone();
         if let Some(content) = &self.streaming_assistant {
-            lines.push(message_line("assistant", content));
+            lines.extend(message_lines("assistant", content));
         }
         lines
     }
 
     fn scroll_down(&mut self) {
-        self.scroll = self.scroll.saturating_add(1);
+        self.scroll_back = self.scroll_back.saturating_sub(3);
     }
 
     fn scroll_up(&mut self) {
-        self.scroll = self.scroll.saturating_sub(1);
+        self.scroll_back = self.scroll_back.saturating_add(3);
+    }
+
+    fn jump_to_tail(&mut self) {
+        self.scroll_back = 0;
     }
 }
 
@@ -307,19 +311,79 @@ impl ToolStatus {
 }
 
 fn message_line(role: &str, content: &str) -> Line<'static> {
-    let color = match role {
-        "user" => Color::Cyan,
-        "assistant" => Color::Green,
-        _ => Color::Gray,
-    };
+    let (label, color) = role_label(role);
     Line::from(vec![
         Span::styled(
-            role.to_string(),
+            label.to_string(),
             Style::default().fg(color).add_modifier(Modifier::BOLD),
         ),
         Span::raw("  "),
         Span::raw(content.to_string()),
     ])
+}
+
+fn message_lines(role: &str, content: &str) -> Vec<Line<'static>> {
+    let mut lines = Vec::new();
+    let (label, color) = role_label(role);
+    let body_style = match role {
+        "user" => Style::default().fg(Color::White),
+        "assistant" => Style::default(),
+        _ => Style::default().fg(Color::Gray),
+    };
+    let prefix_width = label.len() + 2;
+    let continuation = " ".repeat(prefix_width);
+
+    for (index, raw_line) in content
+        .trim_end_matches(['\r', '\n'])
+        .split('\n')
+        .enumerate()
+    {
+        if index == 0 {
+            lines.push(Line::from(vec![
+                Span::styled(
+                    label.to_string(),
+                    Style::default().fg(color).add_modifier(Modifier::BOLD),
+                ),
+                Span::styled("  ", Style::default().fg(Color::DarkGray)),
+                Span::styled(raw_line.to_string(), body_style),
+            ]));
+        } else {
+            lines.push(Line::from(vec![
+                Span::styled(continuation.clone(), Style::default().fg(Color::DarkGray)),
+                Span::styled(raw_line.to_string(), body_style),
+            ]));
+        }
+    }
+
+    if lines.is_empty() {
+        lines.push(message_line(role, ""));
+    }
+
+    lines
+}
+
+fn role_label(role: &str) -> (&'static str, Color) {
+    match role {
+        "user" => (">", Color::Cyan),
+        "assistant" => ("ROB", Color::Green),
+        "tool" => ("tool", Color::Magenta),
+        "system" => ("system", Color::Yellow),
+        _ => ("msg", Color::Gray),
+    }
+}
+
+fn detail_lines(detail: &str) -> Vec<Line<'static>> {
+    detail
+        .lines()
+        .enumerate()
+        .map(|(index, line)| {
+            let prefix = if index == 0 { "  `- " } else { "     " };
+            Line::from(vec![
+                Span::styled(prefix, Style::default().fg(Color::DarkGray)),
+                Span::styled(line.to_string(), Style::default().fg(Color::DarkGray)),
+            ])
+        })
+        .collect()
 }
 
 fn format_json(value: &Value) -> String {
@@ -392,7 +456,9 @@ async fn run_loop(
                     break;
                 }
                 if input == "/help" {
-                    app.push_system("/help, /id, /config, /exit are available. Enter sends.");
+                    app.push_system(
+                        "/help, /id, /config, /exit are available. Up/PageUp scroll, End follows tail.",
+                    );
                     continue;
                 }
                 if input == "/id" {
@@ -429,6 +495,7 @@ async fn run_loop(
             }
             KeyCode::Up | KeyCode::PageUp => app.scroll_up(),
             KeyCode::Down | KeyCode::PageDown => app.scroll_down(),
+            KeyCode::End => app.jump_to_tail(),
             _ => {}
         }
     }
@@ -439,27 +506,68 @@ async fn run_loop(
 fn draw_ui(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>, app: &TuiApp) -> Result<()> {
     terminal.draw(|frame| {
         let area = frame.size();
+        let input_lines = app.input.lines().count().max(1);
+        let input_height = u16::try_from(input_lines.saturating_add(2))
+            .unwrap_or(7)
+            .clamp(3, 7);
         let chunks = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
+                Constraint::Length(1),
                 Constraint::Min(5),
-                Constraint::Length(3),
+                Constraint::Length(input_height),
                 Constraint::Length(1),
             ])
             .split(area);
 
-        let transcript = Paragraph::new(app.display_lines())
-            .block(Block::default().title("ROB Agent").borders(Borders::ALL))
+        let header = Paragraph::new(status_line(&app.header, Color::Cyan));
+        frame.render_widget(header, chunks[0]);
+
+        let transcript_lines = app.display_lines();
+        let rendered_lines = estimate_rendered_line_count(&transcript_lines, chunks[1].width);
+        let max_scroll = rendered_lines.saturating_sub(usize::from(chunks[1].height));
+        let scroll = max_scroll.saturating_sub(usize::from(app.scroll_back));
+        let transcript = Paragraph::new(transcript_lines)
             .wrap(Wrap { trim: false })
-            .scroll((app.scroll, 0));
-        frame.render_widget(transcript, chunks[0]);
+            .scroll((u16::try_from(scroll).unwrap_or(u16::MAX), 0));
+        frame.render_widget(transcript, chunks[1]);
 
         let input = Paragraph::new(app.input.as_str())
-            .block(Block::default().title("Message").borders(Borders::ALL));
-        frame.render_widget(input, chunks[1]);
+            .block(Block::default().title(" Message ").borders(Borders::ALL));
+        frame.render_widget(input, chunks[2]);
 
-        let status = Paragraph::new(app.status.as_str());
-        frame.render_widget(status, chunks[2]);
+        let status = Paragraph::new(status_line(&app.status, Color::Green));
+        frame.render_widget(status, chunks[3]);
     })?;
     Ok(())
+}
+
+fn estimate_rendered_line_count(lines: &[Line<'static>], width: u16) -> usize {
+    let width = usize::from(width).max(1);
+    lines
+        .iter()
+        .map(|line| {
+            let chars = line
+                .spans
+                .iter()
+                .map(|span| span.content.chars().count())
+                .sum::<usize>();
+            chars.div_ceil(width).max(1)
+        })
+        .sum()
+}
+
+fn status_line(text: &str, accent: Color) -> Line<'static> {
+    let mut spans = Vec::new();
+    for (index, segment) in text.split('|').map(str::trim).enumerate() {
+        if index > 0 {
+            spans.push(Span::styled(" | ", Style::default().fg(Color::DarkGray)));
+        }
+        let color = if index == 0 { accent } else { Color::Gray };
+        spans.push(Span::styled(
+            segment.to_string(),
+            Style::default().fg(color),
+        ));
+    }
+    Line::from(spans)
 }
