@@ -1,11 +1,12 @@
+use crate::agents::{agent_for_system_prompt, resolve_agent, AgentDefinition};
 use crate::config::{ApprovalPolicy, RobConfig};
 use crate::context::{inject_runtime_context, prepare_context, ContextWindowConfig};
 use crate::llm::{
     assistant_message, assistant_text_message, chat_completion_stream, content_as_text,
-    parse_tool_arguments, system_message, tool_message, user_message, ChatMessage, ToolCall,
+    parse_tool_arguments, system_text_message, tool_message, user_message, ChatMessage, ToolCall,
 };
 use crate::state;
-use crate::tools::{run_tool, tool_context_prompt, tool_specs};
+use crate::tools::{run_tool, tool_context_prompt};
 use anyhow::Result;
 use rustyline::error::ReadlineError;
 use rustyline::DefaultEditor;
@@ -48,6 +49,7 @@ pub enum AgentEvent {
 
 pub struct AgentSession {
     id: String,
+    agent: AgentDefinition,
     config: RobConfig,
     messages: Vec<ChatMessage>,
     approval_policy: ApprovalPolicy,
@@ -57,24 +59,41 @@ pub struct AgentSession {
 impl AgentSession {
     pub fn new(
         config: RobConfig,
+        agent_override: Option<String>,
         model_override: Option<String>,
         resume_id: Option<String>,
         approval_override: Option<ApprovalPolicy>,
     ) -> Result<Self> {
-        Self::new_inner(config, model_override, resume_id, approval_override, false)
+        Self::new_inner(
+            config,
+            agent_override,
+            model_override,
+            resume_id,
+            approval_override,
+            false,
+        )
     }
 
     fn new_interactive(
         config: RobConfig,
+        agent_override: Option<String>,
         model_override: Option<String>,
         resume_id: Option<String>,
         approval_override: Option<ApprovalPolicy>,
     ) -> Result<Self> {
-        Self::new_inner(config, model_override, resume_id, approval_override, true)
+        Self::new_inner(
+            config,
+            agent_override,
+            model_override,
+            resume_id,
+            approval_override,
+            true,
+        )
     }
 
     fn new_inner(
         mut config: RobConfig,
+        agent_override: Option<String>,
         model_override: Option<String>,
         resume_id: Option<String>,
         approval_override: Option<ApprovalPolicy>,
@@ -87,15 +106,31 @@ impl AgentSession {
         }
 
         let approval_policy = approval_override.unwrap_or(config.tool_approval);
-        let (id, messages) = if let Some(id) = resume_id {
+        let requested_agent = resolve_agent(agent_override.as_deref())?;
+        let (id, agent, messages) = if let Some(id) = resume_id {
             let record = state::load_session(&id)?;
-            (record.id, record.messages)
+            let agent = if agent_override.is_some() {
+                requested_agent
+            } else {
+                agent_for_system_prompt(
+                    record
+                        .messages
+                        .first()
+                        .and_then(|message| message.content.as_deref()),
+                )
+            };
+            (record.id, agent, record.messages)
         } else {
-            (Uuid::new_v4().to_string(), vec![system_message()])
+            (
+                Uuid::new_v4().to_string(),
+                requested_agent.clone(),
+                vec![system_text_message(requested_agent.system_prompt)],
+            )
         };
 
         Ok(Self {
             id,
+            agent,
             config,
             messages,
             approval_policy,
@@ -139,7 +174,7 @@ impl AgentSession {
 
         loop {
             let profile = self.config.active_profile()?;
-            let tools = tool_specs();
+            let tools = self.agent.tools()?;
             let tool_context = tool_context_prompt(&tools);
             let context_config = ContextWindowConfig {
                 token_threshold: self.config.context.token_threshold,
@@ -196,10 +231,15 @@ impl AgentSession {
         &self.messages
     }
 
+    pub fn agent_tools(&self) -> Result<Vec<crate::tools::ToolSpec>> {
+        self.agent.tools()
+    }
+
     pub fn config_summary(&self) -> Result<String> {
         let profile = self.config.active_profile()?;
         Ok(format!(
-            "{} | {} | {} | {} | approval={} | reasoning={} | context={} tokens/{} msgs",
+            "agent={} | {} | {} | {} | {} | approval={} | reasoning={} | context={} tokens/{} msgs",
+            self.agent.name,
             profile.name,
             profile.base_url,
             profile.model,
@@ -245,20 +285,31 @@ impl AgentSession {
             arguments: args.clone(),
         })?;
 
-        let outcome = if let Some(error) = validate_tool_arguments(&call.function.name, &args) {
-            let count = invalid_tool_counts
-                .entry(format!("{}:{error}", call.function.name))
-                .and_modify(|count| *count += 1)
-                .or_insert(1);
-            let guidance = invalid_tool_guidance(&call.function.name, &error, *count);
-            if *count >= INVALID_TOOL_REPEAT_LIMIT {
-                ToolOutcome::InvalidRepeated(format!(
-                    "Stopped because the model repeatedly produced an invalid `{}` tool call: {error}.",
-                    call.function.name
-                ))
-            } else {
-                ToolOutcome::Failed(guidance)
-            }
+        let outcome = if !self
+            .agent
+            .tool_names()
+            .contains(&call.function.name.as_str())
+        {
+            let error = format!(
+                "tool `{}` is not available to agent `{}`",
+                call.function.name, self.agent.name
+            );
+            invalid_tool_call_outcome(
+                &call.function.name,
+                &error,
+                &format!(
+                    "use only these tools: {}",
+                    self.agent.tool_names().join(", ")
+                ),
+                invalid_tool_counts,
+            )
+        } else if let Some(error) = validate_tool_arguments(&call.function.name, &args) {
+            invalid_tool_call_outcome(
+                &call.function.name,
+                &error,
+                &invalid_tool_example(&call.function.name),
+                invalid_tool_counts,
+            )
         } else if self.approve_tool(&call.function.name, &args)? {
             match run_tool(&call.function.name, args).await {
                 Ok(output) => ToolOutcome::Completed(output),
@@ -349,15 +400,38 @@ fn missing_string(args: &Value, key: &str) -> Option<String> {
         .err()
 }
 
-fn invalid_tool_guidance(name: &str, error: &str, count: usize) -> String {
-    let example = match name {
+fn invalid_tool_example(name: &str) -> String {
+    match name {
         "shell_exec" => r#"example: {"command":"uname","args":["-a"],"timeout_ms":3000}"#,
         "read_file" => r#"example: {"path":"README.md"}"#,
         "search_text" => r#"example: {"pattern":"TODO","path":"."}"#,
         _ => "check the tool schema and provide all required arguments",
-    };
+    }
+    .to_string()
+}
+
+fn invalid_tool_call_outcome(
+    name: &str,
+    error: &str,
+    hint: &str,
+    invalid_tool_counts: &mut HashMap<String, usize>,
+) -> ToolOutcome {
+    let count = invalid_tool_counts
+        .entry(format!("{name}:{error}"))
+        .and_modify(|count| *count += 1)
+        .or_insert(1);
+    if *count >= INVALID_TOOL_REPEAT_LIMIT {
+        ToolOutcome::InvalidRepeated(format!(
+            "Stopped because the model repeatedly produced an invalid `{name}` tool call: {error}.",
+        ))
+    } else {
+        ToolOutcome::Failed(invalid_tool_guidance_with_hint(name, error, hint, *count))
+    }
+}
+
+fn invalid_tool_guidance_with_hint(name: &str, error: &str, hint: &str, count: usize) -> String {
     format!(
-        "tool argument error ({count}/{INVALID_TOOL_REPEAT_LIMIT}): {error}. Retry with valid JSON arguments; {example}"
+        "tool argument error ({count}/{INVALID_TOOL_REPEAT_LIMIT}) for `{name}`: {error}. Retry with a valid tool call; {hint}"
     )
 }
 
@@ -395,9 +469,30 @@ mod tests {
     }
 
     #[test]
+    fn repeated_unavailable_tool_call_stops_loop() {
+        let mut counts = HashMap::new();
+        let error = "tool `shell_exec` is not available to agent `reader`";
+        let first = invalid_tool_call_outcome(
+            "shell_exec",
+            error,
+            "use only these tools: pwd, read_file",
+            &mut counts,
+        );
+        let second = invalid_tool_call_outcome(
+            "shell_exec",
+            error,
+            "use only these tools: pwd, read_file",
+            &mut counts,
+        );
+
+        assert!(matches!(first, ToolOutcome::Failed(_)));
+        assert!(matches!(second, ToolOutcome::InvalidRepeated(_)));
+    }
+
+    #[test]
     fn omits_tool_choice_after_tool_result() {
         let messages = vec![
-            system_message(),
+            system_text_message(resolve_agent(Some("main")).unwrap().system_prompt),
             user_message("cwd"),
             tool_message("call_1".to_string(), "pwd".to_string(), "/tmp".to_string()),
         ];
@@ -408,12 +503,18 @@ mod tests {
 
 pub async fn run_repl(
     config: RobConfig,
+    agent_override: Option<String>,
     model_override: Option<String>,
     resume_id: Option<String>,
     approval_override: Option<ApprovalPolicy>,
 ) -> Result<()> {
-    let mut session =
-        AgentSession::new_interactive(config, model_override, resume_id, approval_override)?;
+    let mut session = AgentSession::new_interactive(
+        config,
+        agent_override,
+        model_override,
+        resume_id,
+        approval_override,
+    )?;
     let mut rl = DefaultEditor::new()?;
 
     println!("ROB Linux agent CLI. Type /help for commands, /exit to quit.");
@@ -432,7 +533,7 @@ pub async fn run_repl(
                 match input {
                     "/exit" | "/quit" => break,
                     "/help" => print_help(),
-                    "/tools" => print_tools(),
+                    "/tools" => print_tools(&session)?,
                     "/config" => println!("{}", session.config_summary()?),
                     "/id" => println!("{}", session.id()),
                     _ => {
@@ -496,8 +597,9 @@ fn print_help() {
     println!("/exit    Quit");
 }
 
-fn print_tools() {
-    for spec in tool_specs() {
+fn print_tools(session: &AgentSession) -> Result<()> {
+    for spec in session.agent_tools()? {
         println!("{} - {}", spec.function.name, spec.function.description);
     }
+    Ok(())
 }

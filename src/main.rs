@@ -1,4 +1,5 @@
 mod agent;
+mod agents;
 mod config;
 mod context;
 mod llm;
@@ -28,6 +29,9 @@ enum Command {
     },
     /// Start an interactive agent chat.
     Chat {
+        /// Select the agent definition for this session.
+        #[arg(long)]
+        agent: Option<String>,
         /// Override the configured model for this session.
         #[arg(long)]
         model: Option<String>,
@@ -40,6 +44,9 @@ enum Command {
     },
     /// Start the terminal UI agent chat.
     Tui {
+        /// Select the agent definition for this session.
+        #[arg(long)]
+        agent: Option<String>,
         /// Override the configured model for this session.
         #[arg(long)]
         model: Option<String>,
@@ -54,6 +61,9 @@ enum Command {
     Ask {
         /// Message to send to the agent.
         message: String,
+        /// Select the agent definition for this turn.
+        #[arg(long)]
+        agent: Option<String>,
         /// Override the configured model for this turn.
         #[arg(long)]
         model: Option<String>,
@@ -68,6 +78,11 @@ enum Command {
     Tools {
         #[command(subcommand)]
         command: ToolsCommand,
+    },
+    /// Inspect available agent definitions.
+    Agents {
+        #[command(subcommand)]
+        command: AgentCommand,
     },
     /// Inspect saved agent sessions.
     Sessions {
@@ -128,13 +143,25 @@ enum ConfigCommand {
 #[derive(Subcommand)]
 enum ToolsCommand {
     /// List local tools available to the agent.
-    List,
+    List {
+        /// Show tools for a specific agent instead of all built-in tools.
+        #[arg(long)]
+        agent: Option<String>,
+    },
     /// Run a local tool manually with JSON arguments.
     Run {
         name: String,
         #[arg(default_value = "{}")]
         args: String,
     },
+}
+
+#[derive(Subcommand)]
+enum AgentCommand {
+    /// List built-in agents.
+    List,
+    /// Show one agent's prompt and tools.
+    Show { name: String },
 }
 
 #[derive(Subcommand)]
@@ -152,29 +179,33 @@ async fn main() -> Result<()> {
     match cli.command {
         Command::Config { command } => handle_config(command).await,
         Command::Chat {
+            agent: agent_name,
             model,
             resume,
             approval,
         } => {
             let config = RobConfig::load_or_default()?;
-            agent::run_repl(config, model, resume, approval).await
+            agent::run_repl(config, agent_name, model, resume, approval).await
         }
         Command::Tui {
+            agent: agent_name,
             model,
             resume,
             approval,
         } => {
             let config = RobConfig::load_or_default()?;
-            tui::run_tui(config, model, resume, approval).await
+            tui::run_tui(config, agent_name, model, resume, approval).await
         }
         Command::Ask {
             message,
+            agent: agent_name,
             model,
             resume,
             approval,
         } => {
             let config = RobConfig::load_or_default()?;
-            let mut session = agent::AgentSession::new(config, model, resume, approval)?;
+            let mut session =
+                agent::AgentSession::new(config, agent_name, model, resume, approval)?;
             let response = session
                 .send_user_message_streaming(&message, |delta| {
                     print!("{delta}");
@@ -189,6 +220,7 @@ async fn main() -> Result<()> {
             Ok(())
         }
         Command::Tools { command } => handle_tools(command).await,
+        Command::Agents { command } => handle_agents(command).await,
         Command::Sessions { command } => handle_sessions(command).await,
     }
 }
@@ -296,8 +328,13 @@ async fn handle_config(command: ConfigCommand) -> Result<()> {
 
 async fn handle_tools(command: ToolsCommand) -> Result<()> {
     match command {
-        ToolsCommand::List => {
-            for tool in tools::tool_specs() {
+        ToolsCommand::List { agent } => {
+            let tools = if let Some(agent) = agent {
+                agents::resolve_agent(Some(&agent))?.tools()?
+            } else {
+                tools::tool_specs()
+            };
+            for tool in tools {
                 println!("{} - {}", tool.function.name, tool.function.description);
             }
             Ok(())
@@ -306,6 +343,30 @@ async fn handle_tools(command: ToolsCommand) -> Result<()> {
             let args: serde_json::Value = serde_json::from_str(&args)?;
             let result = tools::run_tool(&name, args).await?;
             println!("{result}");
+            Ok(())
+        }
+    }
+}
+
+async fn handle_agents(command: AgentCommand) -> Result<()> {
+    match command {
+        AgentCommand::List => {
+            for agent in agents::builtin_agents() {
+                println!(
+                    "{} - {} tools={}",
+                    agent.name,
+                    agent.description,
+                    agent.tool_names().join(",")
+                );
+            }
+            Ok(())
+        }
+        AgentCommand::Show { name } => {
+            let agent = agents::resolve_agent(Some(&name))?;
+            println!("name: {}", agent.name);
+            println!("description: {}", agent.description);
+            println!("tools: {}", agent.tool_names().join(", "));
+            println!("prompt:\n{}", agent.system_prompt);
             Ok(())
         }
     }

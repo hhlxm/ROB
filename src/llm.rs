@@ -231,12 +231,9 @@ impl ReasoningEffort {
     }
 }
 
+#[cfg(test)]
 pub fn system_message() -> ChatMessage {
-    system_text_message(
-        "You are ROB, a Linux-native CLI agent migrated from OpenOmniBot concepts. \
-Use tools when they help inspect the local Linux environment. Keep answers concise. \
-When using shell_exec, pass a command and argv array; never assume shell expansion.",
-    )
+    system_text_message(crate::agents::main_agent().system_prompt)
 }
 
 pub fn system_text_message(content: &str) -> ChatMessage {

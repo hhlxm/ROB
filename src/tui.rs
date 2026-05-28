@@ -19,11 +19,18 @@ use std::{io, time::Duration};
 
 pub async fn run_tui(
     config: RobConfig,
+    agent_override: Option<String>,
     model_override: Option<String>,
     resume_id: Option<String>,
     approval_override: Option<ApprovalPolicy>,
 ) -> Result<()> {
-    let mut session = AgentSession::new(config, model_override, resume_id, approval_override)?;
+    let mut session = AgentSession::new(
+        config,
+        agent_override,
+        model_override,
+        resume_id,
+        approval_override,
+    )?;
     let mut app = TuiApp::from_session(&session)?;
 
     enable_raw_mode()?;

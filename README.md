@@ -108,6 +108,7 @@ ROB_CONFIG=/tmp/rob-config.toml cargo run -- config show
 
 ```bash
 cargo run -- ask "List files in the current directory"
+cargo run -- ask "Read README.md" --agent reader
 ```
 
 `ask` 会边接收模型 delta 边打印到 stdout。
@@ -116,6 +117,7 @@ cargo run -- ask "List files in the current directory"
 
 ```bash
 cargo run -- chat
+cargo run -- chat --agent reader
 ```
 
 `chat` 会在每轮回答中流式打印内容。
@@ -124,6 +126,7 @@ cargo run -- chat
 
 ```bash
 cargo run -- tui
+cargo run -- tui --agent reader
 ```
 
 `tui` 会在消息区实时追加模型输出，并显示工具调用的开始、完成、失败或拒绝状态。
@@ -143,6 +146,33 @@ cargo run -- chat --model another-model
 cargo run -- tui --model another-model
 cargo run -- ask "hello" --model another-model
 ```
+
+## Agent 定义
+
+ROB 支持多个 agent。每个 agent 都有自己的 system prompt 和可用工具集合；没有显式指定时默认使用 `main`。
+
+当前内置 agent：
+
+- `main`：默认 Linux agent，保留此前 ROB 的 prompt 和完整工具集合。
+- `reader`：只读检查 agent，使用独立 prompt，只暴露 `pwd`、`list_dir`、`read_file`、`search_text`。
+
+查看 agent：
+
+```bash
+cargo run -- agents list
+cargo run -- agents show main
+cargo run -- agents show reader
+```
+
+指定 agent：
+
+```bash
+cargo run -- ask "查看 README 的主要内容" --agent reader
+cargo run -- chat --agent main
+cargo run -- tui --agent reader
+```
+
+恢复 session 时，如果没有传 `--agent`，ROB 会根据 session 第一条 system prompt 识别对应 agent；如果显式传入 `--agent`，则以当前参数为准。
 
 TUI 快捷键：
 
@@ -168,6 +198,7 @@ TUI 内支持 `/help`、`/id`、`/config`、`/exit`。
 
 ```bash
 cargo run -- tools list
+cargo run -- tools list --agent reader
 ```
 
 手动运行工具：
@@ -178,13 +209,13 @@ cargo run -- tools run list_dir '{"path":"src"}'
 cargo run -- tools run shell_exec '{"command":"uname","args":["-s"]}'
 ```
 
-`shell_exec` 不会调用 shell，只会以 `command + args` 形式执行，并限制在 allowlist 内。即使没有参数也必须传 `args: []`。如果模型连续返回缺少必填参数的工具调用，ROB 会先把修正提示写回模型；再次重复同类无效调用时会提前停止，避免在 agent loop 中空转到轮次上限。当前 allowlist 包含：
+`shell_exec` 不会调用 shell，只会以 `command + args` 形式执行，并限制在 allowlist 内。即使没有参数也必须传 `args: []`。如果模型连续返回缺少必填参数的工具调用，ROB 会先把修正提示写回模型；再次重复同类无效调用时会提前停止，避免 agent loop 空转。当前 allowlist 包含：
 
 ```text
 pwd, ls, cat, head, tail, wc, rg, find, date, uname, whoami, df, du, ps, env
 ```
 
-每次请求模型前，ROB 会像 OpenOmniBot 一样把工具使用规则和当前工具清单动态注入到运行上下文中，同时仍通过 OpenAI-compatible `tools` 字段传递完整 schema。这个运行上下文不会写入 session 历史。
+每次请求模型前，ROB 会像 OpenOmniBot 一样按当前 agent 把工具使用规则和工具清单动态注入到运行上下文中，同时仍通过 OpenAI-compatible `tools` 字段传递该 agent 的工具 schema。这个运行上下文不会写入 session 历史。
 
 ROB 的 `/chat/completions` JSON body 也按 OpenOmniBot 的结构构建：`messages`、`model`、`max_completion_tokens`、`stream`、`stream_options.include_usage`、`tools`、按轮设置的 `tool_choice`、`parallel_tool_calls`，以及可选的 `reasoning_effort` / `enable_thinking`。工具 schema 会统一注入 `tool_title` 必填字段，便于模型为每次工具调用生成简短标题。
 
@@ -252,7 +283,8 @@ ROB_STATE=/tmp/rob-state cargo run -- sessions list
 ## 代码结构
 
 ```text
-src/main.rs    CLI 入口，定义 config/chat/tui/ask/tools/sessions 子命令。
+src/main.rs    CLI 入口，定义 config/chat/tui/ask/agents/tools/sessions 子命令。
+src/agents.rs  Agent 定义注册表，每个 agent 绑定自己的 prompt 和 tools。
 src/config.rs  模型服务商 profile、配置文件读写、审批策略。
 src/llm.rs     OpenAI-compatible chat completions 请求和消息结构。
 src/agent.rs   AgentSession、消息循环、tool-call 执行和会话持久化。
@@ -265,14 +297,15 @@ src/state.rs   会话保存、读取、列表和 state 目录管理。
 
 1. `main.rs` 解析 CLI 命令。
 2. `config.rs` 读取 active provider。
-3. `agent.rs` 创建或恢复 `AgentSession`。
-4. `context.rs` 根据估算 token 阈值构造运行上下文，必要时把较早消息压缩成摘要。
-5. `tools.rs` 生成工具使用规则和工具清单，并作为运行时 system context 注入本轮请求。
-6. 用户消息进入 `llm.rs` 的 chat-completions 请求，附带 reasoning/thinking 控制参数和完整 tool schema。
-7. `llm.rs` 按 SSE `data:` chunk 解析流式输出、reasoning 内容、usage 和 tool calls。
-8. 如果模型返回 tool calls，`agent.rs` 先追加 assistant tool_call 消息，再根据审批策略调用 `tools.rs`。
-9. 每个 tool 结果都会追加为 tool 消息并持久化，然后继续下一轮模型请求，直到模型返回最终回答。
-10. 每段 user / assistant / tool 消息都保存到 `state.rs` 管理的完整 session 文件。
+3. `agents.rs` 解析当前 agent，并提供该 agent 的 system prompt 与 tools。
+4. `agent.rs` 创建或恢复 `AgentSession`。
+5. `context.rs` 根据估算 token 阈值构造运行上下文，必要时把较早消息压缩成摘要。
+6. `tools.rs` 根据当前 agent 生成工具使用规则和工具清单，并作为运行时 system context 注入本轮请求。
+7. 用户消息进入 `llm.rs` 的 chat-completions 请求，附带 reasoning/thinking 控制参数和当前 agent 的 tool schema。
+8. `llm.rs` 按 SSE `data:` chunk 解析流式输出、reasoning 内容、usage 和 tool calls。
+9. 如果模型返回 tool calls，`agent.rs` 先追加 assistant tool_call 消息，再根据审批策略调用 `tools.rs`。
+10. 每个 tool 结果都会追加为 tool 消息并持久化，然后继续下一轮模型请求，直到模型返回最终回答。
+11. 每段 user / assistant / tool 消息都保存到 `state.rs` 管理的完整 session 文件。
 
 ## 开发指南
 
@@ -301,7 +334,9 @@ cargo run -- --help
 cargo run -- config --help
 cargo run -- chat --help
 cargo run -- tui --help
+cargo run -- agents list
 cargo run -- tools list
+cargo run -- tools list --agent reader
 cargo run -- tools run pwd
 cargo run -- tools run list_dir '{"path":"src"}'
 cargo run -- sessions list

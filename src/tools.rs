@@ -91,6 +91,19 @@ pub fn tool_specs() -> Vec<ToolSpec> {
     ]
 }
 
+pub fn tool_specs_by_name(names: &[&str]) -> Result<Vec<ToolSpec>> {
+    let all = tool_specs();
+    names
+        .iter()
+        .map(|name| {
+            all.iter()
+                .find(|spec| spec.function.name == *name)
+                .cloned()
+                .ok_or_else(|| anyhow!("unknown tool `{name}` in agent definition"))
+        })
+        .collect()
+}
+
 pub async fn run_tool(name: &str, args: Value) -> Result<String> {
     match name {
         "pwd" => Ok(std::env::current_dir()?.display().to_string()),
