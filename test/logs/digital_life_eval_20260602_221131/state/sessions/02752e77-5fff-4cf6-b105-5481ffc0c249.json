@@ -1,0 +1,984 @@
+{
+  "id": "02752e77-5fff-4cf6-b105-5481ffc0c249",
+  "created_at": 1780410066,
+  "updated_at": 1780410158,
+  "messages": [
+    {
+      "role": "system",
+      "content": "你是 ROB Digital Life，一个个人数字生活专家 agent。你的任务是把用户关于文件、相册、照片元数据、影音播放、监控安防、文档处理、短文本处理、票据/合同字段提取、知识笔记的自然语言请求，解析成明确、可执行的工具调用或直接回答。优先使用本 agent 的专用工具，不要使用 Linux shell 工具。工具选择规则：文件路径属性、单目录列表、目录文件数量用 digital_file_manager；相册列表、共享相册、已有相册命中、照片在哪个相册用 digital_photo_album_search；单张照片拍摄时间/地点/拍摄信息用 digital_photo_metadata；播放、暂停、继续、选集、切音轨/字幕、投屏、播放进度用 digital_media_control；监控事件、区域动静、车辆/快递/人员出现用 digital_security_event_query；已知人脸标签、陌生人、熟人、门口那个是谁用 digital_security_identity_recognition；PDF 单文件/多文件处理用 digital_pdf_document；Word 处理用 digital_word_document；PPT 生成用 digital_ppt_generation；表格/CSV 处理用 digital_spreadsheet；OCR 识别与扫描件转文本用 digital_ocr；票据/合同/发票字段提取用 digital_structured_extract；短文本总结、翻译、润色、改写、压缩、扩写用 digital_text_assistant；笔记打标签、关联、新建主题、关键词检索、笔记问答用 digital_note_knowledge。不要为同一请求拆出不必要的多次工具调用；单文件单动作、单目录直查、单张照片元数据、单关键词笔记检索都只调用一个最匹配的工具。用户原话里的路径、文件名、相册名、影片名、镜头/区域、人物标签、主题名、关键词必须原样写入工具参数，不要泛化或改写。相对时间要保留原文写入 time_query，例如“刚刚”“刚才”“下午”“今晚”“今天”；如果用户明确镜头/区域，也必须写入 area 或 camera_name。“门口那个是谁”“刚才进门的是熟人吗”属于身份识别；“门口有人吗”“客厅有动静吗”“今天有车进出过吗”属于事件查询。“这个文件”“这张照片”“这份 PDF/docx/xlsx”只有在上下文能确定目标时才使用；如果上下文没有目标路径或对象 ID，先用简短中文追问。短文本总结、翻译和润色如果用户直接给出文本，可以直接调用 digital_text_assistant；如果只是普通闲聊或不属于本 agent 能力范围，直接简短回答或说明不能处理。工具调用后，用简洁中文说明已提交或查到的意图；如果工具返回 mock payload，不要声称真实后端已经完成不可验证的操作。"
+    },
+    {
+      "role": "user",
+      "content": "客厅有动静吗"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "7LsKO2LdURG98OD2VEkd1gzHE52pyzor",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"motion\",\"time_query\":\"刚刚\",\"tool_title\":\"检查客厅是否有动静\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "7LsKO2LdURG98OD2VEkd1gzHE52pyzor",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "O2RDwtynR9efcfxEUFmclJqawN4VcvZ6",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"motion\",\"time_query\":\"刚刚\",\"tool_title\":\"检查客厅是否有动静\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "O2RDwtynR9efcfxEUFmclJqawN4VcvZ6",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "auRckjI2CtiyrjxjWVq8vzPkrcKHm5Ao",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"motion\",\"time_query\":\"刚刚\",\"tool_title\":\"检查客厅是否有动静\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "auRckjI2CtiyrjxjWVq8vzPkrcKHm5Ao",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "zbgjf3AwTs4bNBfXw0fMc1ZlvHgemAsR",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"motion\",\"time_query\":\"刚刚\",\"tool_title\":\"检查客厅是否有动静\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "zbgjf3AwTs4bNBfXw0fMc1ZlvHgemAsR",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "W7cem0Wx811sb2sJiVp68gpatfZyErKx",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"motion\",\"time_query\":\"刚刚\",\"tool_title\":\"检查客厅是否有动静\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "W7cem0Wx811sb2sJiVp68gpatfZyErKx",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "kElT1WmJ6tzTIISjTs1GzAUiiabJvwie",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"motion\",\"time_query\":\"刚刚\",\"tool_title\":\"检查客厅是否有动静\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "kElT1WmJ6tzTIISjTs1GzAUiiabJvwie",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "TPdqWPZ8heTvvNCVKzUxFSU7tHiKNAGS",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"motion\",\"time_query\":\"刚刚\",\"tool_title\":\"检查客厅是否有动静\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "TPdqWPZ8heTvvNCVKzUxFSU7tHiKNAGS",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "kf17aQXlAcESBA3WTEpu1S03z8GmD0q5",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"motion\",\"time_query\":\"刚刚\",\"tool_title\":\"检查客厅是否有动静\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "kf17aQXlAcESBA3WTEpu1S03z8GmD0q5",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "1Bwmce7Vv23MksbFZ3NCz4TTYDzvipeQ",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"motion\",\"time_query\":\"刚刚\",\"tool_title\":\"检查客厅是否有动静\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "1Bwmce7Vv23MksbFZ3NCz4TTYDzvipeQ",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "xKlLWHEjczv06YYsePDsMjDk1tlpT6Ir",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"motion\",\"time_query\":\"刚刚\",\"tool_title\":\"检查客厅是否有动静\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "xKlLWHEjczv06YYsePDsMjDk1tlpT6Ir",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "9rD4esc5zS6E3ZzOsVy3LiDyTtdRTNJO",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"motion\",\"time_query\":\"刚刚\",\"tool_title\":\"检查客厅是否有动静\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "9rD4esc5zS6E3ZzOsVy3LiDyTtdRTNJO",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "d16QyKNgodVO94ctNsmzxN4UMImdUbKa",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"motion\",\"time_query\":\"刚刚\",\"tool_title\":\"检查客厅是否有动静\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "d16QyKNgodVO94ctNsmzxN4UMImdUbKa",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "R2CTxm96D1xBlpzjAdWWeXSLOM42YE9h",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"motion\",\"time_query\":\"刚刚\",\"tool_title\":\"检查客厅是否有动静\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "R2CTxm96D1xBlpzjAdWWeXSLOM42YE9h",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "8kpZ3VdMD5ChUlly2T4hjXY6VoNe6mFn",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"motion\",\"time_query\":\"刚刚\",\"tool_title\":\"检查客厅是否有动静\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "8kpZ3VdMD5ChUlly2T4hjXY6VoNe6mFn",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "FVVa6h1MnjnuKQ8LpNQrrJAUKrQklOXS",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"motion\",\"time_query\":\"刚刚\",\"tool_title\":\"检查客厅是否有动静\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "FVVa6h1MnjnuKQ8LpNQrrJAUKrQklOXS",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "adsSd3P2nEGog1SxIZD3lrOzJ5c3JaTA",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"motion\",\"time_query\":\"刚刚\",\"tool_title\":\"检查客厅是否有动静\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "adsSd3P2nEGog1SxIZD3lrOzJ5c3JaTA",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "YCkEnkDIRcFs061WpUqL5d41uyOfDmFq",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"motion\",\"time_query\":\"刚刚\",\"tool_title\":\"检查客厅是否有动静\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "YCkEnkDIRcFs061WpUqL5d41uyOfDmFq",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "kc0mnSCv5MOTRG8xY0lrVtGO1qLMnQnD",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"motion\",\"time_query\":\"刚刚\",\"tool_title\":\"检查客厅是否有动静\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "kc0mnSCv5MOTRG8xY0lrVtGO1qLMnQnD",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "d2BT3MfNDyfQeJupUcafWENGqjEgZ75R",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"motion\",\"time_query\":\"刚刚\",\"tool_title\":\"检查客厅是否有动静\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "d2BT3MfNDyfQeJupUcafWENGqjEgZ75R",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "l2k86Jvyl22BSmLGUVKyezIFMMR0ZcRM",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"motion\",\"time_query\":\"刚刚\",\"tool_title\":\"检查客厅是否有动静\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "l2k86Jvyl22BSmLGUVKyezIFMMR0ZcRM",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "38xKrioTi8eRfjlNxodrVE5ggh8LZNPx",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"motion\",\"time_query\":\"刚刚\",\"tool_title\":\"检查客厅是否有动静\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "38xKrioTi8eRfjlNxodrVE5ggh8LZNPx",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "VdshCRaNRK4woTT28WgX0CovR205xZBN",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"motion\",\"time_query\":\"刚刚\",\"tool_title\":\"检查客厅是否有动静\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "VdshCRaNRK4woTT28WgX0CovR205xZBN",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "pbHWLObBPs4S1YQVERZ8sMP15cjOiDIZ",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"motion\",\"time_query\":\"刚刚\",\"tool_title\":\"检查客厅是否有动静\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "pbHWLObBPs4S1YQVERZ8sMP15cjOiDIZ",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "2Y3SWME110CupQxyiOIRrZBZDRgHJ2ci",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"motion\",\"time_query\":\"刚刚\",\"tool_title\":\"检查客厅是否有动静\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "2Y3SWME110CupQxyiOIRrZBZDRgHJ2ci",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "6yzNSqOSgjOqo0gN8DtWTQvpihHGU8Nx",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"motion\",\"time_query\":\"刚刚\",\"tool_title\":\"检查客厅是否有动静\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "6yzNSqOSgjOqo0gN8DtWTQvpihHGU8Nx",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "D1KRa7iDKWsez8rGCagkDt5A6feENTcz",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"motion\",\"time_query\":\"刚刚\",\"tool_title\":\"检查客厅是否有动静\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "D1KRa7iDKWsez8rGCagkDt5A6feENTcz",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "6Cw8FBvQeoVveByTFLscegknejWTF8Tr",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"motion\",\"time_query\":\"刚刚\",\"tool_title\":\"检查客厅是否有动静\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "6Cw8FBvQeoVveByTFLscegknejWTF8Tr",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "p8RNHg7GN8ChiLC6biBEEt5JPjsceg9T",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"motion\",\"time_query\":\"刚刚\",\"tool_title\":\"检查客厅是否有动静\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "p8RNHg7GN8ChiLC6biBEEt5JPjsceg9T",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "Yla8vN2mOPCVId9OovOql40trLWdvp8V",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"motion\",\"time_query\":\"刚刚\",\"tool_title\":\"检查客厅是否有动静\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "Yla8vN2mOPCVId9OovOql40trLWdvp8V",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "Hoc3yFrMMVmBnJT9FDhO8cFBVpDKhY30",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"motion\",\"time_query\":\"刚刚\",\"tool_title\":\"检查客厅是否有动静\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "Hoc3yFrMMVmBnJT9FDhO8cFBVpDKhY30",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "OPxu2dxiyDVotLWXCp66iRHmWQQZbHJl",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"motion\",\"time_query\":\"刚刚\",\"tool_title\":\"检查客厅是否有动静\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "OPxu2dxiyDVotLWXCp66iRHmWQQZbHJl",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "dDaM2rF5GhkNUYZLjNpgUaAqNTgOcI9k",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"motion\",\"time_query\":\"刚刚\",\"tool_title\":\"检查客厅是否有动静\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "dDaM2rF5GhkNUYZLjNpgUaAqNTgOcI9k",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "OOJ4lWUkB9qF2dn24TRGYI1OsorZV0a0",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"motion\",\"time_query\":\"刚刚\",\"tool_title\":\"检查客厅是否有动静\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "OOJ4lWUkB9qF2dn24TRGYI1OsorZV0a0",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "zXOkk4WEbusVjoGWbmv0APmuL8FGj2hO",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"motion\",\"time_query\":\"刚刚\",\"tool_title\":\"检查客厅是否有动静\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "zXOkk4WEbusVjoGWbmv0APmuL8FGj2hO",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "Lwx2ANa7Gu7rkyWpa1ZffoxoD0xgIsKG",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"motion\",\"time_query\":\"刚刚\",\"tool_title\":\"检查客厅是否有动静\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "Lwx2ANa7Gu7rkyWpa1ZffoxoD0xgIsKG",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "ot6xueRd3tIy8iiOSQWWmvCQ92fO4iln",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"motion\",\"time_query\":\"刚刚\",\"tool_title\":\"检查客厅是否有动静\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "ot6xueRd3tIy8iiOSQWWmvCQ92fO4iln",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "ObFCM9qzNjUWuN9l7HERAoc1iUUSCZmc",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"motion\",\"time_query\":\"刚刚\",\"tool_title\":\"检查客厅是否有动静\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "ObFCM9qzNjUWuN9l7HERAoc1iUUSCZmc",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "Bi8mWkxayxENA6UDOwncKSFWbMt2eHsh",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"motion\",\"time_query\":\"刚刚\",\"tool_title\":\"检查客厅是否有动静\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "Bi8mWkxayxENA6UDOwncKSFWbMt2eHsh",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "bpPBcZziSBRkndrn1Hl69rTajo5GdruQ",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"motion\",\"time_query\":\"刚刚\",\"tool_title\":\"检查客厅是否有动静\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "bpPBcZziSBRkndrn1Hl69rTajo5GdruQ",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "z7j0yVB95w6eChk69WfQUqwS38Av6lbN",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"motion\",\"time_query\":\"刚刚\",\"tool_title\":\"检查客厅是否有动静\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "z7j0yVB95w6eChk69WfQUqwS38Av6lbN",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "g6aZP5Bm192Yoz6Da6Y0RFeKd90bDq7m",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"motion\",\"time_query\":\"刚刚\",\"tool_title\":\"检查客厅是否有动静\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "g6aZP5Bm192Yoz6Da6Y0RFeKd90bDq7m",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "5aFEw6lHUfSzVbZYK8P4nUKbprg4PG7k",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"motion\",\"time_query\":\"刚刚\",\"tool_title\":\"检查客厅是否有动静\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "5aFEw6lHUfSzVbZYK8P4nUKbprg4PG7k",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "iYK0gZSaUN01YRlwxpBgnOe5P1IaAebP",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"motion\",\"time_query\":\"刚刚\",\"tool_title\":\"检查客厅是否有动静\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "iYK0gZSaUN01YRlwxpBgnOe5P1IaAebP",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "nrnhiUfN4F5BuB3OtTAd9KOGVBURob8h",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"motion\",\"time_query\":\"刚刚\",\"tool_title\":\"检查客厅是否有动静\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "nrnhiUfN4F5BuB3OtTAd9KOGVBURob8h",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "tWRTO1saADii4jqqWOz5OcGwnGTj1HVJ",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"motion\",\"time_query\":\"刚刚\",\"tool_title\":\"检查客厅是否有动静\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "tWRTO1saADii4jqqWOz5OcGwnGTj1HVJ",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "zePY0PWrQIhs1PKT1MP1CmkTiG2D0hQm",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"motion\",\"time_query\":\"刚刚\",\"tool_title\":\"检查客厅是否有动静\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "zePY0PWrQIhs1PKT1MP1CmkTiG2D0hQm",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "sZm6gJ7GXrboGquSV8hDIyNcFFA8C50i",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"motion\",\"time_query\":\"刚刚\",\"tool_title\":\"检查客厅是否有动静\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "sZm6gJ7GXrboGquSV8hDIyNcFFA8C50i",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "bn6jpuwiGMy13Lgbyvj75FD0EPBN6kq3",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"motion\",\"time_query\":\"刚刚\",\"tool_title\":\"检查客厅是否有动静\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "bn6jpuwiGMy13Lgbyvj75FD0EPBN6kq3",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "mb9Scea8cnDexxux6fNGh40OJ1YlCp6x",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"motion\",\"time_query\":\"刚刚\",\"tool_title\":\"检查客厅是否有动静\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "mb9Scea8cnDexxux6fNGh40OJ1YlCp6x",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "kHAStcl7Ve0IkTTDc7PQT4VyKzTA7lSH",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"motion\",\"time_query\":\"刚刚\",\"tool_title\":\"检查客厅是否有动静\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "kHAStcl7Ve0IkTTDc7PQT4VyKzTA7lSH",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "B6jpPDZVt5BWtnSlfuzIiiRI72k7hFJP",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"motion\",\"time_query\":\"刚刚\",\"tool_title\":\"检查客厅是否有动静\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "B6jpPDZVt5BWtnSlfuzIiiRI72k7hFJP",
+      "name": "digital_security_event_query"
+    }
+  ]
+}

@@ -1,0 +1,148 @@
+{
+  "generated_at": "20260602_221131",
+  "outdir": "/mnt/emmc/lxm/ROB/test/logs/digital_life_eval_20260602_221131",
+  "state": "/mnt/emmc/lxm/ROB/test/logs/digital_life_eval_20260602_221131/state",
+  "source_file": "test/test3.md",
+  "provider": {
+    "name": "default",
+    "model": "qwen3.5-4b",
+    "base_url": "https://runner-missing-greatly-notebooks.trycloudflare.com/v1"
+  },
+  "success": 53,
+  "total": 84,
+  "expected_total": 84,
+  "completed_all": true,
+  "accuracy": 0.6309523809523809,
+  "groups": {
+    "1": {
+      "label": "文件管理",
+      "success": 2,
+      "total": 4,
+      "accuracy": 0.5
+    },
+    "2": {
+      "label": "相册检索",
+      "success": 4,
+      "total": 4,
+      "accuracy": 1.0
+    },
+    "3": {
+      "label": "照片元数据",
+      "success": 4,
+      "total": 4,
+      "accuracy": 1.0
+    },
+    "4": {
+      "label": "影音控制",
+      "success": 10,
+      "total": 11,
+      "accuracy": 0.9090909090909091
+    },
+    "5": {
+      "label": "安防事件",
+      "success": 0,
+      "total": 8,
+      "accuracy": 0.0
+    },
+    "6": {
+      "label": "身份识别",
+      "success": 0,
+      "total": 7,
+      "accuracy": 0.0
+    },
+    "7": {
+      "label": "PDF 操作",
+      "success": 6,
+      "total": 6,
+      "accuracy": 1.0
+    },
+    "8": {
+      "label": "Word 操作",
+      "success": 4,
+      "total": 4,
+      "accuracy": 1.0
+    },
+    "9": {
+      "label": "PPT 生成",
+      "success": 1,
+      "total": 3,
+      "accuracy": 0.3333333333333333
+    },
+    "10": {
+      "label": "表格处理",
+      "success": 1,
+      "total": 4,
+      "accuracy": 0.25
+    },
+    "11": {
+      "label": "文本总结",
+      "success": 3,
+      "total": 3,
+      "accuracy": 1.0
+    },
+    "12": {
+      "label": "PDF 元信息",
+      "success": 4,
+      "total": 4,
+      "accuracy": 1.0
+    },
+    "13": {
+      "label": "翻译",
+      "success": 3,
+      "total": 4,
+      "accuracy": 0.75
+    },
+    "14": {
+      "label": "OCR",
+      "success": 3,
+      "total": 4,
+      "accuracy": 0.75
+    },
+    "15": {
+      "label": "文本改写",
+      "success": 3,
+      "total": 5,
+      "accuracy": 0.6
+    },
+    "16": {
+      "label": "结构化提取",
+      "success": 0,
+      "total": 3,
+      "accuracy": 0.0
+    },
+    "17": {
+      "label": "笔记操作",
+      "success": 2,
+      "total": 3,
+      "accuracy": 0.6666666666666666
+    },
+    "18": {
+      "label": "笔记检索",
+      "success": 3,
+      "total": 3,
+      "accuracy": 1.0
+    }
+  },
+  "failure_histogram": {
+    "timeout returncode=124": 14,
+    "tool_call_count expected=1 actual=2": 4,
+    "tool expected=digital_file_manager actual=digital_pdf_document; action expected=get_properties actual=get_metadata; path expected_contains=/xx/合同.pdf actual=None": 1,
+    "action expected=resume actual=resume_last": 1,
+    "slide_count expected=5 actual=None": 1,
+    "formula expected_contains=求和 actual==SUM(A2:A10)": 1,
+    "filter_condition expected_contains=金额大于 1000 actual=金额大于 10": 1,
+    "sheet_name expected_contains=['项目预算', '预算'] actual=None": 1,
+    "target_language expected_contains_any=['中文', 'Chinese'] actual=None": 1,
+    "action expected=rewrite actual=compress; style expected_contains_any=['简洁'] actual=None": 1,
+    "max_chars expected=200 actual=None": 1,
+    "document_type expected_one_of=['invoice', 'unknown', 'image'] actual=None": 1,
+    "document_type expected_one_of=['contract', 'pdf', 'unknown'] actual=None": 1,
+    "document_type expected_one_of=['receipt', 'ticket', 'unknown', 'image'] actual=None; fields expected_contains=商户 actual=['merchant']": 1,
+    "note_id expected_contains=note_mock_001 actual=note_mock_01": 1
+  },
+  "logs": {
+    "jsonl": "/mnt/emmc/lxm/ROB/test/logs/digital_life_eval_20260602_221131/test3.jsonl",
+    "summary_json": "/mnt/emmc/lxm/ROB/test/logs/digital_life_eval_20260602_221131/summary.json",
+    "summary_md": "/mnt/emmc/lxm/ROB/test/logs/digital_life_eval_20260602_221131/summary.md"
+  }
+}

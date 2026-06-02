@@ -1,0 +1,1269 @@
+{
+  "id": "dd55b943-b04f-4727-bdcd-162c5241e711",
+  "created_at": 1780409945,
+  "updated_at": 1780410064,
+  "messages": [
+    {
+      "role": "system",
+      "content": "你是 ROB Digital Life，一个个人数字生活专家 agent。你的任务是把用户关于文件、相册、照片元数据、影音播放、监控安防、文档处理、短文本处理、票据/合同字段提取、知识笔记的自然语言请求，解析成明确、可执行的工具调用或直接回答。优先使用本 agent 的专用工具，不要使用 Linux shell 工具。工具选择规则：文件路径属性、单目录列表、目录文件数量用 digital_file_manager；相册列表、共享相册、已有相册命中、照片在哪个相册用 digital_photo_album_search；单张照片拍摄时间/地点/拍摄信息用 digital_photo_metadata；播放、暂停、继续、选集、切音轨/字幕、投屏、播放进度用 digital_media_control；监控事件、区域动静、车辆/快递/人员出现用 digital_security_event_query；已知人脸标签、陌生人、熟人、门口那个是谁用 digital_security_identity_recognition；PDF 单文件/多文件处理用 digital_pdf_document；Word 处理用 digital_word_document；PPT 生成用 digital_ppt_generation；表格/CSV 处理用 digital_spreadsheet；OCR 识别与扫描件转文本用 digital_ocr；票据/合同/发票字段提取用 digital_structured_extract；短文本总结、翻译、润色、改写、压缩、扩写用 digital_text_assistant；笔记打标签、关联、新建主题、关键词检索、笔记问答用 digital_note_knowledge。不要为同一请求拆出不必要的多次工具调用；单文件单动作、单目录直查、单张照片元数据、单关键词笔记检索都只调用一个最匹配的工具。用户原话里的路径、文件名、相册名、影片名、镜头/区域、人物标签、主题名、关键词必须原样写入工具参数，不要泛化或改写。相对时间要保留原文写入 time_query，例如“刚刚”“刚才”“下午”“今晚”“今天”；如果用户明确镜头/区域，也必须写入 area 或 camera_name。“门口那个是谁”“刚才进门的是熟人吗”属于身份识别；“门口有人吗”“客厅有动静吗”“今天有车进出过吗”属于事件查询。“这个文件”“这张照片”“这份 PDF/docx/xlsx”只有在上下文能确定目标时才使用；如果上下文没有目标路径或对象 ID，先用简短中文追问。短文本总结、翻译和润色如果用户直接给出文本，可以直接调用 digital_text_assistant；如果只是普通闲聊或不属于本 agent 能力范围，直接简短回答或说明不能处理。工具调用后，用简洁中文说明已提交或查到的意图；如果工具返回 mock payload，不要声称真实后端已经完成不可验证的操作。"
+    },
+    {
+      "role": "user",
+      "content": "刚刚院子有人没"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "6P7hraeJ7UzCLYybZ73OWkCMT7LOv1ns",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"person\",\"time_query\":\"刚刚\",\"tool_title\":\"查询院子是否有人\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "6P7hraeJ7UzCLYybZ73OWkCMT7LOv1ns",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "cJKDxcMy3LdwXUQquhtPJOlQxYCyez4h",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"person\",\"time_query\":\"刚刚\",\"tool_title\":\"查询院子是否有人\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "cJKDxcMy3LdwXUQquhtPJOlQxYCyez4h",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "bOn96MxelaWIXgJM4ystPvvS9l3GHJcK",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"person\",\"time_query\":\"刚刚\",\"tool_title\":\"查询院子是否有人\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "bOn96MxelaWIXgJM4ystPvvS9l3GHJcK",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "tV6s3SuMMqfjvj1NJDf9DP6is195nd61",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"person\",\"time_query\":\"刚刚\",\"tool_title\":\"查询院子是否有人\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "tV6s3SuMMqfjvj1NJDf9DP6is195nd61",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "ylhQLdwfJJAfFrnsRhmhgp8QPfOeps77",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"person\",\"time_query\":\"刚刚\",\"tool_title\":\"查询院子是否有人\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "ylhQLdwfJJAfFrnsRhmhgp8QPfOeps77",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "YRH33xl1X0ZUZCzim2EuFel3BsU1Yyag",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"person\",\"time_query\":\"刚刚\",\"tool_title\":\"查询院子是否有人\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "YRH33xl1X0ZUZCzim2EuFel3BsU1Yyag",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "ALFgI7iLMdeTs2WlEMgWAQqeWXJDbNLT",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"person\",\"time_query\":\"刚刚\",\"tool_title\":\"查询院子是否有人\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "ALFgI7iLMdeTs2WlEMgWAQqeWXJDbNLT",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "ZtmXlfRxpjpMQ6ThoMn2UGAfMeR8BwRn",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"person\",\"time_query\":\"刚刚\",\"tool_title\":\"查询院子是否有人\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "ZtmXlfRxpjpMQ6ThoMn2UGAfMeR8BwRn",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "2zAStLbzCOlJdfKlimxzkg3WPnRv2OF9",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"person\",\"time_query\":\"刚刚\",\"tool_title\":\"查询院子是否有人\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "2zAStLbzCOlJdfKlimxzkg3WPnRv2OF9",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "DpiA3vTNmjYjMkCj3cqpWX4yOtwVz3Jx",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"person\",\"time_query\":\"刚刚\",\"tool_title\":\"查询院子是否有人\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "DpiA3vTNmjYjMkCj3cqpWX4yOtwVz3Jx",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "1a4noWvuMixtTS1XGIGdelSPi7LQV66Q",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"person\",\"time_query\":\"刚刚\",\"tool_title\":\"查询院子是否有人\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "1a4noWvuMixtTS1XGIGdelSPi7LQV66Q",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "hkcfs1G6F1YZD9oOfXH09fE3weIFUD0R",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"person\",\"time_query\":\"刚刚\",\"tool_title\":\"查询院子是否有人\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "hkcfs1G6F1YZD9oOfXH09fE3weIFUD0R",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "sWSAog4dhSSmaeTP7uOLGkr3ag9aOvBh",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"person\",\"time_query\":\"刚刚\",\"tool_title\":\"查询院子是否有人\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "sWSAog4dhSSmaeTP7uOLGkr3ag9aOvBh",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "HS80N6AuOiOy62RsPziEGWvZceD1PoKS",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"person\",\"time_query\":\"刚刚\",\"tool_title\":\"查询院子是否有人\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "HS80N6AuOiOy62RsPziEGWvZceD1PoKS",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "YgZVWJizLvfGXBHkhkhdT11Oc4W5QG1H",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"person\",\"time_query\":\"刚刚\",\"tool_title\":\"查询院子是否有人\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "YgZVWJizLvfGXBHkhkhdT11Oc4W5QG1H",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "WYrjD3em7xA4n5Agd2APOU3WuWpXtQ19",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"person\",\"time_query\":\"刚刚\",\"tool_title\":\"查询院子是否有人\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "WYrjD3em7xA4n5Agd2APOU3WuWpXtQ19",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "4Qo9p3LyTfORHecs4DXh5hPEwacWNC7r",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"person\",\"time_query\":\"刚刚\",\"tool_title\":\"查询院子是否有人\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "4Qo9p3LyTfORHecs4DXh5hPEwacWNC7r",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "eDthKYaKarwJtSlSZcItsGNwIT11Z0HZ",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"person\",\"time_query\":\"刚刚\",\"tool_title\":\"查询院子是否有人\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "eDthKYaKarwJtSlSZcItsGNwIT11Z0HZ",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "tfnvSZR9O68X9fc3nAJEnIStw1uRbB70",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"person\",\"time_query\":\"刚刚\",\"tool_title\":\"查询院子是否有人\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "tfnvSZR9O68X9fc3nAJEnIStw1uRbB70",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "wzR55g53m8CLVyuw8SuZA4c483PubqOC",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"person\",\"time_query\":\"刚刚\",\"tool_title\":\"查询院子是否有人\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "wzR55g53m8CLVyuw8SuZA4c483PubqOC",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "W38rtBnY0ZsHCiviEgL32hVgRYJizUZI",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"person\",\"time_query\":\"刚刚\",\"tool_title\":\"查询院子是否有人\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "W38rtBnY0ZsHCiviEgL32hVgRYJizUZI",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "io7MrzX1wVcIb6EJNn4gD0XjKXaEOcNu",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"person\",\"time_query\":\"刚刚\",\"tool_title\":\"查询院子是否有人\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "io7MrzX1wVcIb6EJNn4gD0XjKXaEOcNu",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "GDQvzwiENmNvYG4bgI3f1DFzB8j3j8zr",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"person\",\"time_query\":\"刚刚\",\"tool_title\":\"查询院子是否有人\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "GDQvzwiENmNvYG4bgI3f1DFzB8j3j8zr",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "7MI0u9Aw77KeXYbUMq9iSn2oPKOxMlJm",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"person\",\"time_query\":\"刚刚\",\"tool_title\":\"查询院子是否有人\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "7MI0u9Aw77KeXYbUMq9iSn2oPKOxMlJm",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "zW71BinlMBQcuu63x7gCDeJUWfb7Fikx",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"person\",\"time_query\":\"刚刚\",\"tool_title\":\"查询院子是否有人\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "zW71BinlMBQcuu63x7gCDeJUWfb7Fikx",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "0wQjqQSUNu2D0JpChzSYkHHHYkEhWU86",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"person\",\"time_query\":\"刚刚\",\"tool_title\":\"查询院子是否有人\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "0wQjqQSUNu2D0JpChzSYkHHHYkEhWU86",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "WmpcrpWWcECrZ53wWLCJj3eFiA57P1yR",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"person\",\"time_query\":\"刚刚\",\"tool_title\":\"查询院子是否有人\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "WmpcrpWWcECrZ53wWLCJj3eFiA57P1yR",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "f8b0mpBjXMFv8jRHtGsSxGe9Y4wqJ79n",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"person\",\"time_query\":\"刚刚\",\"tool_title\":\"查询院子是否有人\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "f8b0mpBjXMFv8jRHtGsSxGe9Y4wqJ79n",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "2pykjZpolFHoIDkV3JqwUKhTEjSZGGFK",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"person\",\"time_query\":\"刚刚\",\"tool_title\":\"查询院子是否有人\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "2pykjZpolFHoIDkV3JqwUKhTEjSZGGFK",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "Ylrx0s1c9lG3OLaDBFK90TMq523NeUx3",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"person\",\"time_query\":\"刚刚\",\"tool_title\":\"查询院子是否有人\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "Ylrx0s1c9lG3OLaDBFK90TMq523NeUx3",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "ZXlaP6HFTvtUX9BXvFSwCZGlcZ2bAebt",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"person\",\"time_query\":\"刚刚\",\"tool_title\":\"查询院子是否有人\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "ZXlaP6HFTvtUX9BXvFSwCZGlcZ2bAebt",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "5F5TlXKiZaApKnP0y98dFT6BYINy3ANA",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"person\",\"time_query\":\"刚刚\",\"tool_title\":\"查询院子是否有人\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "5F5TlXKiZaApKnP0y98dFT6BYINy3ANA",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "yM4IwWxbmpdq94oNmZJc9x01cI43qzu8",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"person\",\"time_query\":\"刚刚\",\"tool_title\":\"查询院子是否有人\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "yM4IwWxbmpdq94oNmZJc9x01cI43qzu8",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "yDqmasi9OF2RpKFO72bAVGMjwjcFNNeC",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"person\",\"time_query\":\"刚刚\",\"tool_title\":\"查询院子是否有人\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "yDqmasi9OF2RpKFO72bAVGMjwjcFNNeC",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "WWjzrSo90tvRmkAjLNS64XxpD5QeRugG",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"person\",\"time_query\":\"刚刚\",\"tool_title\":\"查询院子是否有人\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "WWjzrSo90tvRmkAjLNS64XxpD5QeRugG",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "V6t3qC6Kjliobq5vjUnxAtEtHsEFHD80",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"person\",\"time_query\":\"刚刚\",\"tool_title\":\"查询院子是否有人\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "V6t3qC6Kjliobq5vjUnxAtEtHsEFHD80",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "NhYh1AdFY4hpPk8DXlgqdEBHuYzm0RNn",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"person\",\"time_query\":\"刚刚\",\"tool_title\":\"查询院子是否有人\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "NhYh1AdFY4hpPk8DXlgqdEBHuYzm0RNn",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "h7BDAfov2WmhYmujZgfJqmz7iluOGSHl",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"person\",\"time_query\":\"刚刚\",\"tool_title\":\"查询院子是否有人\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "h7BDAfov2WmhYmujZgfJqmz7iluOGSHl",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "lITEu1wS2HzYj0dWoLR4ttTCpmy8s65b",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"person\",\"time_query\":\"刚刚\",\"tool_title\":\"查询院子是否有人\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "lITEu1wS2HzYj0dWoLR4ttTCpmy8s65b",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "LAAZJCxypZW7gKK6y1pPl1DuscGX6aME",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"person\",\"time_query\":\"刚刚\",\"tool_title\":\"查询院子是否有人\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "LAAZJCxypZW7gKK6y1pPl1DuscGX6aME",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "12ouAUxC6K8xG1rTSvcnK4PufqjGqwWq",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"person\",\"time_query\":\"刚刚\",\"tool_title\":\"查询院子是否有人\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "12ouAUxC6K8xG1rTSvcnK4PufqjGqwWq",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "fU5J5czBXTlSBkW6rEfwP2JvOUzLmiUw",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"person\",\"time_query\":\"刚刚\",\"tool_title\":\"查询院子是否有人\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "fU5J5czBXTlSBkW6rEfwP2JvOUzLmiUw",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "cb6F7XD8pcas506oWAVeLfBvAgksf5iX",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"person\",\"time_query\":\"刚刚\",\"tool_title\":\"查询院子是否有人\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "cb6F7XD8pcas506oWAVeLfBvAgksf5iX",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "Ug4Yc3hv6vLF7fIm9Khfxr7cKTY8Sg0q",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"person\",\"time_query\":\"刚刚\",\"tool_title\":\"查询院子是否有人\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "Ug4Yc3hv6vLF7fIm9Khfxr7cKTY8Sg0q",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "QPFPztTiiHlrp9sD2riKSa8KmiQLCtO7",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"person\",\"time_query\":\"刚刚\",\"tool_title\":\"查询院子是否有人\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "QPFPztTiiHlrp9sD2riKSa8KmiQLCtO7",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "YtmfusQ0DmdEGkfeEyhUsOi3hWF2Ux4W",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"person\",\"time_query\":\"刚刚\",\"tool_title\":\"查询院子是否有人\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "YtmfusQ0DmdEGkfeEyhUsOi3hWF2Ux4W",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "ARBctwT2gHSoGaWwBUnZEIw11jbexQyw",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"person\",\"time_query\":\"刚刚\",\"tool_title\":\"查询院子是否有人\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "ARBctwT2gHSoGaWwBUnZEIw11jbexQyw",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "cbgoUSRgP5E1fq09MOGGTbgA2YF7STtA",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"person\",\"time_query\":\"刚刚\",\"tool_title\":\"查询院子是否有人\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "cbgoUSRgP5E1fq09MOGGTbgA2YF7STtA",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "rqceqnx3Iju9iquKZi877FarBwOXBYEk",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"person\",\"time_query\":\"刚刚\",\"tool_title\":\"查询院子是否有人\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "rqceqnx3Iju9iquKZi877FarBwOXBYEk",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "jJ7Z4WOHdt9THfEWXvvhe1Sv8KtG1rO7",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"person\",\"time_query\":\"刚刚\",\"tool_title\":\"查询院子是否有人\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "jJ7Z4WOHdt9THfEWXvvhe1Sv8KtG1rO7",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "cHcn9ltc28eSinydEEQRZWMPFrLUmKxO",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"person\",\"time_query\":\"刚刚\",\"tool_title\":\"查询院子是否有人\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "cHcn9ltc28eSinydEEQRZWMPFrLUmKxO",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "JuqufAjA6dOqNVutFvSp9bmnqlKIFanF",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"person\",\"time_query\":\"刚刚\",\"tool_title\":\"查询院子是否有人\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "JuqufAjA6dOqNVutFvSp9bmnqlKIFanF",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "fcA9m6O7Kjd8fQqwXV1mOrozfNCkqEM3",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"person\",\"time_query\":\"刚刚\",\"tool_title\":\"查询院子是否有人\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "fcA9m6O7Kjd8fQqwXV1mOrozfNCkqEM3",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "zxqM2WqrzVDPQyIvxF6Kb5IWaU52WLjB",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"person\",\"time_query\":\"刚刚\",\"tool_title\":\"查询院子是否有人\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "zxqM2WqrzVDPQyIvxF6Kb5IWaU52WLjB",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "2xtgv5wpti57lvX5zLzZxS9Bb4gLVyok",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"person\",\"time_query\":\"刚刚\",\"tool_title\":\"查询院子是否有人\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "2xtgv5wpti57lvX5zLzZxS9Bb4gLVyok",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "Qgs86slH9SIwSN55TNRZdqsS7NAs2A24",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"person\",\"time_query\":\"刚刚\",\"tool_title\":\"查询院子是否有人\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "Qgs86slH9SIwSN55TNRZdqsS7NAs2A24",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "0gcueS69wFL6kP8850HGC7IJhPyYyV8H",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"person\",\"time_query\":\"刚刚\",\"tool_title\":\"查询院子是否有人\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "0gcueS69wFL6kP8850HGC7IJhPyYyV8H",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "Ruyuu7NYaXD99dMSuntAFeVJmKygqxdD",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"person\",\"time_query\":\"刚刚\",\"tool_title\":\"查询院子是否有人\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "Ruyuu7NYaXD99dMSuntAFeVJmKygqxdD",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "Pt9t6S4Z8Y7cBpMbAkObnuP5FONwkpa5",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"person\",\"time_query\":\"刚刚\",\"tool_title\":\"查询院子是否有人\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "Pt9t6S4Z8Y7cBpMbAkObnuP5FONwkpa5",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "SdJhVWdhBhAlmk1SsierHWzRPJNq2H1Q",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"person\",\"time_query\":\"刚刚\",\"tool_title\":\"查询院子是否有人\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "SdJhVWdhBhAlmk1SsierHWzRPJNq2H1Q",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "Z20XQLuF3QFJLrp5kJvFIpnRhDihgyJS",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"person\",\"time_query\":\"刚刚\",\"tool_title\":\"查询院子是否有人\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "Z20XQLuF3QFJLrp5kJvFIpnRhDihgyJS",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "8pwd0pXzyQWngXNQjqRNLI7miL60I1WV",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"person\",\"time_query\":\"刚刚\",\"tool_title\":\"查询院子是否有人\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "8pwd0pXzyQWngXNQjqRNLI7miL60I1WV",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "VdaKJaPewpUgNysvkkxqtPuBGnzNmzI8",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"person\",\"time_query\":\"刚刚\",\"tool_title\":\"查询院子是否有人\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "VdaKJaPewpUgNysvkkxqtPuBGnzNmzI8",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "ujSKq5Ye63cFM3Ykw9G4BdlzbPRYNM51",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"person\",\"time_query\":\"刚刚\",\"tool_title\":\"查询院子是否有人\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "ujSKq5Ye63cFM3Ykw9G4BdlzbPRYNM51",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "SnfsTGC1vTzHcOoBjc4ZDzWpY85K8mlZ",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"person\",\"time_query\":\"刚刚\",\"tool_title\":\"查询院子是否有人\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "SnfsTGC1vTzHcOoBjc4ZDzWpY85K8mlZ",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "AbpVQSFO4k7ZKVwv1AvFZRPbMCk1libj",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"person\",\"time_query\":\"刚刚\",\"tool_title\":\"查询院子是否有人\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "AbpVQSFO4k7ZKVwv1AvFZRPbMCk1libj",
+      "name": "digital_security_event_query"
+    }
+  ]
+}

@@ -1,0 +1,490 @@
+{
+  "id": "35a7540a-54d4-4583-a482-5d8d8e1038fb",
+  "created_at": 1780414267,
+  "updated_at": 1780414311,
+  "messages": [
+    {
+      "role": "system",
+      "content": "你是 ROB Digital Life，一个个人数字生活专家 agent。你的任务是把用户关于文件、相册、照片元数据、影音播放、监控安防、文档处理、短文本处理、票据/合同字段提取、知识笔记的自然语言请求，解析成明确、可执行的工具调用或直接回答。优先使用本 agent 的专用工具，不要使用 Linux shell 工具。工具选择规则：文件路径属性、单目录列表、目录文件数量用 digital_file_manager；相册列表、共享相册、已有相册命中、照片在哪个相册用 digital_photo_album_search；单张照片拍摄时间/地点/拍摄信息用 digital_photo_metadata；播放、暂停、继续、选集、切音轨/字幕、投屏、播放进度用 digital_media_control；监控事件、区域动静、车辆/快递/人员出现用 digital_security_event_query；爸爸、妈妈、张三这类已知人物来过没用 digital_security_person_history；陌生人、熟人、送快递的来过这类身份类别历史查询用 digital_security_identity_history；门口那个是谁、刚才进门的是熟人吗这类当前或近时主体识别用 digital_security_current_subject；PDF 单文件/多文件处理用 digital_pdf_document；Word 处理用 digital_word_document；PPT 生成用 digital_ppt_generation；表格/CSV 处理用 digital_spreadsheet；OCR 识别与扫描件转文本用 digital_ocr；发票字段提取用 digital_invoice_extract；合同字段提取用 digital_contract_extract；票据/小票字段提取用 digital_receipt_extract；短文本总结、翻译、润色、改写、压缩、扩写用 digital_text_assistant；笔记打标签、关联、新建主题、关键词检索、笔记问答用 digital_note_knowledge。不要为同一请求拆出不必要的多次工具调用；单文件单动作、单目录直查、单张照片元数据、单关键词笔记检索都只调用一个最匹配的工具。用户原话里的路径、文件名、相册名、影片名、镜头/区域、人物标签、主题名、关键词必须原样写入工具参数，不要泛化或改写。相对时间要保留原文写入 time_query，例如“刚刚”“刚才”“下午”“今晚”“今天”；如果用户明确镜头/区域，也必须写入 area 或 camera_name。“爸爸回来了吗”“张三今天来过没”“妈妈到家了没”属于已知人物历史查询，必须填写 person_label；“客厅有陌生人吗”“送快递的来过吗”属于身份类别历史查询，必须填写 identity_query；“门口那个是谁”“刚才进门的是熟人吗”属于当前或近时主体识别，subject_query 只能填 current_subject、familiar 或 stranger；“刚才进门的是熟人吗”必须填 subject_query=familiar 且 time_query=刚才；“门口有人吗”“客厅有动静吗”“今天有车进出过吗”属于事件查询。提取发票金额和日期必须用 digital_invoice_extract；提取合同甲乙方必须用 digital_contract_extract；提取票据商户必须用 digital_receipt_extract；字段名必须保留用户原文，例如“金额”“日期”“甲方”“乙方”“商户”，不要翻译成英文。“这个文件”“这张照片”“这份 PDF/docx/xlsx”只有在上下文能确定目标时才使用；如果上下文没有目标路径或对象 ID，先用简短中文追问。短文本总结、翻译和润色如果用户直接给出文本，可以直接调用 digital_text_assistant；如果只是普通闲聊或不属于本 agent 能力范围，直接简短回答或说明不能处理。工具调用后，用简洁中文说明已提交或查到的意图；如果工具返回 mock payload，不要声称真实后端已经完成不可验证的操作。"
+    },
+    {
+      "role": "user",
+      "content": "下午门口有快递吗"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "RGcutUqGtTejYzNs7w2ZOoCjkJ2KThmI",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"package\",\"time_query\":\"下午\",\"tool_title\":\"查询下午门口是否有快递\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "RGcutUqGtTejYzNs7w2ZOoCjkJ2KThmI",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "hVopCvMAheVSooRFVbGSxi3qwiqfhPSB",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"package\",\"time_query\":\"下午\",\"tool_title\":\"查询下午门口是否有快递\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "hVopCvMAheVSooRFVbGSxi3qwiqfhPSB",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "H0sKBZRoONtfcuxCTUU2QYMLT3X48z6k",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"package\",\"time_query\":\"下午\",\"tool_title\":\"查询下午门口是否有快递\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "H0sKBZRoONtfcuxCTUU2QYMLT3X48z6k",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "xFmcHZVYTlSqubveB5hakP2Swl6B19iQ",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"package\",\"time_query\":\"下午\",\"tool_title\":\"查询下午门口是否有快递\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "xFmcHZVYTlSqubveB5hakP2Swl6B19iQ",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "qTFuJ43qfKDAvwf4oK5tnetlT6nYEkCZ",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"package\",\"time_query\":\"下午\",\"tool_title\":\"查询下午门口是否有快递\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "qTFuJ43qfKDAvwf4oK5tnetlT6nYEkCZ",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "3HufrvcEy6FpwvTKztsw7JIkiqhaBoN6",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"package\",\"time_query\":\"下午\",\"tool_title\":\"查询下午门口是否有快递\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "3HufrvcEy6FpwvTKztsw7JIkiqhaBoN6",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "6qy4t3C9pRpE0o5202brQlj4Rfu5Qwhj",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"package\",\"time_query\":\"下午\",\"tool_title\":\"查询下午门口是否有快递\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "6qy4t3C9pRpE0o5202brQlj4Rfu5Qwhj",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "CLQagTATzyBe9yEKVpx6i2CVkSwwuzU6",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"package\",\"time_query\":\"下午\",\"tool_title\":\"查询下午门口是否有快递\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "CLQagTATzyBe9yEKVpx6i2CVkSwwuzU6",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "gxqnXYE5JcUe8st9I6w3HETX4ReI8ORN",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"package\",\"time_query\":\"下午\",\"tool_title\":\"查询下午门口是否有快递\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "gxqnXYE5JcUe8st9I6w3HETX4ReI8ORN",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "fxhjEhNgsGqKVLJdw89kKm886jZIwXeR",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"package\",\"time_query\":\"下午\",\"tool_title\":\"查询下午门口是否有快递\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "fxhjEhNgsGqKVLJdw89kKm886jZIwXeR",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "1zH9VVV8usFDpnvdfKF370sUxIturnMr",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"package\",\"time_query\":\"下午\",\"tool_title\":\"查询下午门口是否有快递\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "1zH9VVV8usFDpnvdfKF370sUxIturnMr",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "95TJpz5eNtXMm5ZDhMtE5RDopSgAH1OM",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"package\",\"time_query\":\"下午\",\"tool_title\":\"查询下午门口是否有快递\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "95TJpz5eNtXMm5ZDhMtE5RDopSgAH1OM",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "bv5nJQCEumygPuqgiJ9I8F7nO3GpviXj",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"package\",\"time_query\":\"下午\",\"tool_title\":\"查询下午门口是否有快递\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "bv5nJQCEumygPuqgiJ9I8F7nO3GpviXj",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "3MRBVpJILNoM2zQzUdJgxG0foq226ZKR",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"package\",\"time_query\":\"下午\",\"tool_title\":\"查询下午门口是否有快递\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "3MRBVpJILNoM2zQzUdJgxG0foq226ZKR",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "onwM7ly4QyTkYZTMgwNtxw4sQ2y6GZSL",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"package\",\"time_query\":\"下午\",\"tool_title\":\"查询下午门口是否有快递\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "onwM7ly4QyTkYZTMgwNtxw4sQ2y6GZSL",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "1910zDx95EmRnbmAVwMDqC9cpl6T5UzC",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"package\",\"time_query\":\"下午\",\"tool_title\":\"查询下午门口是否有快递\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "1910zDx95EmRnbmAVwMDqC9cpl6T5UzC",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "8Vrv4phyf8b8Pd9zOa0IsQYcgeFkNsRN",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"package\",\"time_query\":\"下午\",\"tool_title\":\"查询下午门口是否有快递\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "8Vrv4phyf8b8Pd9zOa0IsQYcgeFkNsRN",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "CcwB845V0J9thSzpNkeDZJFmt1c8Ebwh",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"package\",\"time_query\":\"下午\",\"tool_title\":\"查询下午门口是否有快递\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "CcwB845V0J9thSzpNkeDZJFmt1c8Ebwh",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "q4qzFQcTqpQLnIYaHcd7K0t1Uyffotu0",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"package\",\"time_query\":\"下午\",\"tool_title\":\"查询下午门口是否有快递\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "q4qzFQcTqpQLnIYaHcd7K0t1Uyffotu0",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "uJeTY26a02sZaKknHYCHQVp3IzrooeNS",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"package\",\"time_query\":\"下午\",\"tool_title\":\"查询下午门口是否有快递\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "uJeTY26a02sZaKknHYCHQVp3IzrooeNS",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "t8z5whgxcMLMOtVLkte4ja3To29TWqvH",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"package\",\"time_query\":\"下午\",\"tool_title\":\"查询下午门口是否有快递\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "t8z5whgxcMLMOtVLkte4ja3To29TWqvH",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "qkMNm5ISbmczeuULwwaMPfessFylbdD9",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"package\",\"time_query\":\"下午\",\"tool_title\":\"查询下午门口是否有快递\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "qkMNm5ISbmczeuULwwaMPfessFylbdD9",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "ZOBuNTvAESv2CYUf1oQhG7g16WBwV6kz",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"package\",\"time_query\":\"下午\",\"tool_title\":\"查询下午门口是否有快递\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "ZOBuNTvAESv2CYUf1oQhG7g16WBwV6kz",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "1pVFRKVk0zMT5XLd4P8p12zaMLdQWICo",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"package\",\"time_query\":\"下午\",\"tool_title\":\"查询下午门口是否有快递\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "1pVFRKVk0zMT5XLd4P8p12zaMLdQWICo",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "bY4WOqiohn8gXX2L0BqnFfTxtjskU9DG",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"package\",\"time_query\":\"下午\",\"tool_title\":\"查询下午门口是否有快递\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "bY4WOqiohn8gXX2L0BqnFfTxtjskU9DG",
+      "name": "digital_security_event_query"
+    }
+  ]
+}

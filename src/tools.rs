@@ -763,6 +763,89 @@ pub fn tool_specs() -> Vec<ToolSpec> {
             }),
         ),
         tool(
+            "digital_security_person_history",
+            "Submit a normalized security person history query. Use for checking whether a known person label such as dad, mom, or Zhang San appeared in a time window.",
+            json!({
+                "type": "object",
+                "properties": {
+                    "area": {
+                        "type": "string",
+                        "description": "用户提到的区域或房间，例如“门口”“客厅”。用户没有说明区域时省略，不要编造。"
+                    },
+                    "camera_name": {
+                        "type": "string",
+                        "description": "明确的摄像头名称。用户没有说明摄像头时省略。"
+                    },
+                    "time_query": {
+                        "type": "string",
+                        "description": "时间窗口原文，例如“今天”“当前”“刚才”。未说明但语义是当前/最近状态时填“当前”。"
+                    },
+                    "person_label": {
+                        "type": "string",
+                        "description": "已知人脸库标签或人物称谓，例如“爸爸”“妈妈”“张三”。必须逐字保留用户原文。"
+                    }
+                },
+                "required": ["time_query", "person_label"],
+                "additionalProperties": false
+            }),
+        ),
+        tool(
+            "digital_security_identity_history",
+            "Submit a normalized security identity-category history query. Use for checking whether strangers, familiar people, or couriers appeared in a time window.",
+            json!({
+                "type": "object",
+                "properties": {
+                    "area": {
+                        "type": "string",
+                        "description": "用户提到的区域或房间，例如“门口”“客厅”。用户没有说明区域时省略，不要编造。"
+                    },
+                    "camera_name": {
+                        "type": "string",
+                        "description": "明确的摄像头名称。用户没有说明摄像头时省略。"
+                    },
+                    "time_query": {
+                        "type": "string",
+                        "description": "时间窗口原文，例如“刚刚”“今天”“刚才”。未说明但语义是当前/最近状态时填“当前”。"
+                    },
+                    "identity_query": {
+                        "type": "string",
+                        "enum": ["stranger", "familiar", "courier"],
+                        "description": "陌生人=stranger；熟人=familiar；送快递的=courier。已知人物姓名或称谓不要用本工具，改用 digital_security_person_history。"
+                    }
+                },
+                "required": ["time_query", "identity_query"],
+                "additionalProperties": false
+            }),
+        ),
+        tool(
+            "digital_security_current_subject",
+            "Submit a normalized current or near-time subject recognition query. Use for identifying who is currently or just recently near a camera/entry area.",
+            json!({
+                "type": "object",
+                "properties": {
+                    "area": {
+                        "type": "string",
+                        "description": "用户提到的区域或房间，例如“门口”“进门处”“客厅”。用户原话出现时必须填写。"
+                    },
+                    "camera_name": {
+                        "type": "string",
+                        "description": "明确的摄像头名称。"
+                    },
+                    "time_query": {
+                        "type": "string",
+                        "description": "时间窗口原文，例如“当前”“刚才”。用户说“刚才”时必须填“刚才”；未说明但语义是当前画面时填“当前”。"
+                    },
+                    "subject_query": {
+                        "type": "string",
+                        "enum": ["current_subject", "familiar", "stranger"],
+                        "description": "门口那个是谁=current_subject；是不是熟人=familiar；是不是陌生人=stranger。"
+                    }
+                },
+                "required": ["time_query", "subject_query"],
+                "additionalProperties": false
+            }),
+        ),
+        tool(
             "digital_pdf_document",
             "Submit a normalized PDF operation. Use for encrypting, extracting pages, merging, rotating, adding watermark, extracting forms, or reading PDF metadata.",
             json!({
@@ -905,6 +988,81 @@ pub fn tool_specs() -> Vec<ToolSpec> {
             }),
         ),
         tool(
+            "digital_invoice_extract",
+            "Submit a normalized invoice field extraction request. Use for extracting fields such as invoice amount and date from one invoice file.",
+            json!({
+                "type": "object",
+                "properties": {
+                    "action": {
+                        "type": "string",
+                        "enum": ["extract_fields"],
+                        "description": "从发票提取指定字段。"
+                    },
+                    "input_path": {
+                        "type": "string",
+                        "description": "输入发票图片或 PDF 路径。"
+                    },
+                    "fields": {
+                        "type": "array",
+                        "items": { "type": "string" },
+                        "description": "要提取的字段，必须保留用户原文，例如“金额”“日期”。"
+                    }
+                },
+                "required": ["action", "input_path", "fields"],
+                "additionalProperties": false
+            }),
+        ),
+        tool(
+            "digital_contract_extract",
+            "Submit a normalized contract field extraction request. Use for extracting parties or other named fields from one contract file.",
+            json!({
+                "type": "object",
+                "properties": {
+                    "action": {
+                        "type": "string",
+                        "enum": ["extract_fields"],
+                        "description": "从合同提取指定字段。"
+                    },
+                    "input_path": {
+                        "type": "string",
+                        "description": "输入合同图片、PDF 或文档路径。"
+                    },
+                    "fields": {
+                        "type": "array",
+                        "items": { "type": "string" },
+                        "description": "要提取的字段，必须保留用户原文，例如“甲方”“乙方”。"
+                    }
+                },
+                "required": ["action", "input_path", "fields"],
+                "additionalProperties": false
+            }),
+        ),
+        tool(
+            "digital_receipt_extract",
+            "Submit a normalized receipt or ticket field extraction request. Use for extracting merchant names or other named fields from one receipt/ticket file.",
+            json!({
+                "type": "object",
+                "properties": {
+                    "action": {
+                        "type": "string",
+                        "enum": ["extract_fields"],
+                        "description": "从票据或小票提取指定字段。"
+                    },
+                    "input_path": {
+                        "type": "string",
+                        "description": "输入票据、小票、图片或 PDF 路径。"
+                    },
+                    "fields": {
+                        "type": "array",
+                        "items": { "type": "string" },
+                        "description": "要提取的字段，必须保留用户原文，例如“商户”。"
+                    }
+                },
+                "required": ["action", "input_path", "fields"],
+                "additionalProperties": false
+            }),
+        ),
+        tool(
             "digital_text_assistant",
             "Submit a short-text language task. Use for summarization, translation, polishing, style rewrite, expansion, and compression of short text.",
             json!({
@@ -1012,6 +1170,9 @@ pub async fn run_tool(name: &str, args: Value) -> Result<String> {
         | "digital_security_monitor"
         | "digital_security_event_query"
         | "digital_security_identity_recognition"
+        | "digital_security_person_history"
+        | "digital_security_identity_history"
+        | "digital_security_current_subject"
         | "digital_document_workspace"
         | "digital_pdf_document"
         | "digital_word_document"
@@ -1019,6 +1180,9 @@ pub async fn run_tool(name: &str, args: Value) -> Result<String> {
         | "digital_spreadsheet"
         | "digital_ocr"
         | "digital_structured_extract"
+        | "digital_invoice_extract"
+        | "digital_contract_extract"
+        | "digital_receipt_extract"
         | "digital_text_assistant"
         | "digital_note_knowledge" => digital_life_mock_command(name, args),
         _ => Err(anyhow!("unknown tool `{name}`")),
@@ -1342,6 +1506,25 @@ fn validate_digital_life_args(name: &str, args: &Value) -> Result<()> {
             require_any_string(args, &["person_label", "identity_query"])?;
             Ok(())
         }
+        "digital_security_person_history" => {
+            required_string_arg(args, "time_query")?;
+            required_string_arg(args, "person_label")?;
+            Ok(())
+        }
+        "digital_security_identity_history" => {
+            required_string_arg(args, "time_query")?;
+            require_enum_arg(args, "identity_query", &["stranger", "familiar", "courier"])?;
+            Ok(())
+        }
+        "digital_security_current_subject" => {
+            required_string_arg(args, "time_query")?;
+            require_enum_arg(
+                args,
+                "subject_query",
+                &["current_subject", "familiar", "stranger"],
+            )?;
+            Ok(())
+        }
         "digital_pdf_document" => validate_pdf_document_args(args),
         "digital_word_document" => validate_word_document_args(args),
         "digital_ppt_generation" => {
@@ -1354,6 +1537,12 @@ fn validate_digital_life_args(name: &str, args: &Value) -> Result<()> {
             Ok(())
         }
         "digital_structured_extract" => {
+            required_string_arg(args, "input_path")?;
+            require_nonempty_array(args, "fields")?;
+            Ok(())
+        }
+        "digital_invoice_extract" | "digital_contract_extract" | "digital_receipt_extract" => {
+            required_string_arg(args, "action")?;
             required_string_arg(args, "input_path")?;
             require_nonempty_array(args, "fields")?;
             Ok(())
@@ -1657,6 +1846,17 @@ fn required_string_arg(args: &Value, key: &str) -> Result<String> {
     string_arg(args, key).ok_or_else(|| anyhow!("missing string argument `{key}`"))
 }
 
+fn require_enum_arg(args: &Value, key: &str, allowed: &[&str]) -> Result<String> {
+    let value = required_string_arg(args, key)?;
+    if allowed.contains(&value.as_str()) {
+        return Ok(value);
+    }
+    Err(anyhow!(
+        "invalid value `{value}` for `{key}`; expected one of: {}",
+        allowed.join(", ")
+    ))
+}
+
 fn require_any_string(args: &Value, keys: &[&str]) -> Result<()> {
     if keys
         .iter()
@@ -1940,6 +2140,22 @@ mod tests {
             .iter()
             .find(|spec| spec.function.name == "digital_security_event_query")
             .unwrap();
+        let person_history = specs
+            .iter()
+            .find(|spec| spec.function.name == "digital_security_person_history")
+            .unwrap();
+        let identity_history = specs
+            .iter()
+            .find(|spec| spec.function.name == "digital_security_identity_history")
+            .unwrap();
+        let current_subject = specs
+            .iter()
+            .find(|spec| spec.function.name == "digital_security_current_subject")
+            .unwrap();
+        let invoice_extract = specs
+            .iter()
+            .find(|spec| spec.function.name == "digital_invoice_extract")
+            .unwrap();
         let media = specs
             .iter()
             .find(|spec| spec.function.name == "digital_media_control")
@@ -1962,6 +2178,30 @@ mod tests {
                 .iter()
                 .any(|value| value == "package")
         );
+        assert!(person_history.function.parameters["required"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|value| value == "person_label"));
+        assert!(
+            identity_history.function.parameters["properties"]["identity_query"]["enum"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|value| value == "courier")
+        );
+        assert!(
+            current_subject.function.parameters["properties"]["subject_query"]["enum"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|value| value == "current_subject")
+        );
+        assert!(invoice_extract.function.parameters["required"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|value| value == "fields"));
         assert!(media.function.parameters["properties"]["action"]["enum"]
             .as_array()
             .unwrap()
@@ -2016,7 +2256,7 @@ mod tests {
         )
         .await;
         let valid_extract = run_tool(
-            "digital_structured_extract",
+            "digital_invoice_extract",
             json!({
                 "tool_title": "提取发票金额日期",
                 "action": "extract_fields",
@@ -2026,9 +2266,19 @@ mod tests {
         )
         .await
         .unwrap();
+        let invalid_subject = run_tool(
+            "digital_security_current_subject",
+            json!({
+                "tool_title": "识别刚才进门的是不是熟人",
+                "time_query": "刚才",
+                "subject_query": "是不是熟人"
+            }),
+        )
+        .await;
 
         assert!(missing_password.is_err());
-        assert!(valid_extract.contains(r#""tool": "digital_structured_extract""#));
+        assert!(invalid_subject.is_err());
+        assert!(valid_extract.contains(r#""tool": "digital_invoice_extract""#));
         assert!(valid_extract.contains("金额"));
     }
 }

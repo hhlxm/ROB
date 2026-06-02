@@ -1,0 +1,319 @@
+{
+  "id": "f646b341-9632-472d-b3d0-4f9c64689026",
+  "created_at": 1780410283,
+  "updated_at": 1780410307,
+  "messages": [
+    {
+      "role": "system",
+      "content": "你是 ROB Digital Life，一个个人数字生活专家 agent。你的任务是把用户关于文件、相册、照片元数据、影音播放、监控安防、文档处理、短文本处理、票据/合同字段提取、知识笔记的自然语言请求，解析成明确、可执行的工具调用或直接回答。优先使用本 agent 的专用工具，不要使用 Linux shell 工具。工具选择规则：文件路径属性、单目录列表、目录文件数量用 digital_file_manager；相册列表、共享相册、已有相册命中、照片在哪个相册用 digital_photo_album_search；单张照片拍摄时间/地点/拍摄信息用 digital_photo_metadata；播放、暂停、继续、选集、切音轨/字幕、投屏、播放进度用 digital_media_control；监控事件、区域动静、车辆/快递/人员出现用 digital_security_event_query；已知人脸标签、陌生人、熟人、门口那个是谁用 digital_security_identity_recognition；PDF 单文件/多文件处理用 digital_pdf_document；Word 处理用 digital_word_document；PPT 生成用 digital_ppt_generation；表格/CSV 处理用 digital_spreadsheet；OCR 识别与扫描件转文本用 digital_ocr；票据/合同/发票字段提取用 digital_structured_extract；短文本总结、翻译、润色、改写、压缩、扩写用 digital_text_assistant；笔记打标签、关联、新建主题、关键词检索、笔记问答用 digital_note_knowledge。不要为同一请求拆出不必要的多次工具调用；单文件单动作、单目录直查、单张照片元数据、单关键词笔记检索都只调用一个最匹配的工具。用户原话里的路径、文件名、相册名、影片名、镜头/区域、人物标签、主题名、关键词必须原样写入工具参数，不要泛化或改写。相对时间要保留原文写入 time_query，例如“刚刚”“刚才”“下午”“今晚”“今天”；如果用户明确镜头/区域，也必须写入 area 或 camera_name。“门口那个是谁”“刚才进门的是熟人吗”属于身份识别；“门口有人吗”“客厅有动静吗”“今天有车进出过吗”属于事件查询。“这个文件”“这张照片”“这份 PDF/docx/xlsx”只有在上下文能确定目标时才使用；如果上下文没有目标路径或对象 ID，先用简短中文追问。短文本总结、翻译和润色如果用户直接给出文本，可以直接调用 digital_text_assistant；如果只是普通闲聊或不属于本 agent 能力范围，直接简短回答或说明不能处理。工具调用后，用简洁中文说明已提交或查到的意图；如果工具返回 mock payload，不要声称真实后端已经完成不可验证的操作。"
+    },
+    {
+      "role": "user",
+      "content": "今天有车进出过吗"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "5obykXuuEccheX9Sc2cWtam1altUpFNV",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"vehicle\",\"time_query\":\"今天\",\"tool_title\":\"查询今日车辆进出事件\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "5obykXuuEccheX9Sc2cWtam1altUpFNV",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "HJBTGNc4yKCJAHdmjWpXoRS4JwFDWb3W",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"vehicle\",\"time_query\":\"今天\",\"tool_title\":\"查询今日车辆进出事件\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "HJBTGNc4yKCJAHdmjWpXoRS4JwFDWb3W",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "coxzbwOHxgNWkEgn5CWq2iAuODAXzy1b",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"vehicle\",\"time_query\":\"今天\",\"tool_title\":\"查询今日车辆进出事件\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "coxzbwOHxgNWkEgn5CWq2iAuODAXzy1b",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "x9sQgmzDsfJUirUqgrOfUrQKyF7O2GKf",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"vehicle\",\"time_query\":\"今天\",\"tool_title\":\"查询今日车辆进出事件\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "x9sQgmzDsfJUirUqgrOfUrQKyF7O2GKf",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "PeMYZqbErUO4ssEbLgNz6OVSJNp5XQFd",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"vehicle\",\"time_query\":\"今天\",\"tool_title\":\"查询今日车辆进出事件\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "PeMYZqbErUO4ssEbLgNz6OVSJNp5XQFd",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "SfJoBGJrY6G3jtWvXsKRVQehVzVajwKj",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"vehicle\",\"time_query\":\"今天\",\"tool_title\":\"查询今日车辆进出事件\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "SfJoBGJrY6G3jtWvXsKRVQehVzVajwKj",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "h2zIwwJHNI1p0X5Z9pR4hQgMc8w9HMR0",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"vehicle\",\"time_query\":\"今天\",\"tool_title\":\"查询今日车辆进出事件\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "h2zIwwJHNI1p0X5Z9pR4hQgMc8w9HMR0",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "78cn0llfq8g2hI1R3581K2zJHjICwMT7",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"vehicle\",\"time_query\":\"今天\",\"tool_title\":\"查询今日车辆进出事件\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "78cn0llfq8g2hI1R3581K2zJHjICwMT7",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "rDuwqWi9mrBmNeNMI3fPCvwUgO1khfvo",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"vehicle\",\"time_query\":\"今天\",\"tool_title\":\"查询今日车辆进出事件\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "rDuwqWi9mrBmNeNMI3fPCvwUgO1khfvo",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "k932ppn9ypLNUYkXiWZuhvQ2TGczoXCA",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"vehicle\",\"time_query\":\"今天\",\"tool_title\":\"查询今日车辆进出事件\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "k932ppn9ypLNUYkXiWZuhvQ2TGczoXCA",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "veAzoM0qvH7skO0wm8Jr9B4BHdws3DUA",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"vehicle\",\"time_query\":\"今天\",\"tool_title\":\"查询今日车辆进出事件\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "veAzoM0qvH7skO0wm8Jr9B4BHdws3DUA",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "gtuiys2XZhhzueAyKimG16VO1FCuqRHV",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"vehicle\",\"time_query\":\"今天\",\"tool_title\":\"查询今日车辆进出事件\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "gtuiys2XZhhzueAyKimG16VO1FCuqRHV",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "M5cImikpy1Jt8kJffptkqKbPWHyTnPUr",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"vehicle\",\"time_query\":\"今天\",\"tool_title\":\"查询今日车辆进出事件\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "M5cImikpy1Jt8kJffptkqKbPWHyTnPUr",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "GUmfcZeeIDpr1BBY5v5KBQscziSK4c6r",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"vehicle\",\"time_query\":\"今天\",\"tool_title\":\"查询今日车辆进出事件\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "GUmfcZeeIDpr1BBY5v5KBQscziSK4c6r",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "2SI5DhhUwx2RsfJIGEseyI15Z7KeQGuv",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"vehicle\",\"time_query\":\"今天\",\"tool_title\":\"查询今日车辆进出事件\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "2SI5DhhUwx2RsfJIGEseyI15Z7KeQGuv",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "0iGig6Guf1Y6yg5lru94oOgUfi83EbsU",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"vehicle\",\"time_query\":\"今天\",\"tool_title\":\"查询今日车辆进出事件\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "0iGig6Guf1Y6yg5lru94oOgUfi83EbsU",
+      "name": "digital_security_event_query"
+    }
+  ]
+}

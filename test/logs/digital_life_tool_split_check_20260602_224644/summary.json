@@ -1,0 +1,172 @@
+{
+  "outdir": "/mnt/emmc/lxm/ROB/test/logs/digital_life_tool_split_check_20260602_224644",
+  "success": 4,
+  "total": 6,
+  "results": [
+    {
+      "query": "提取这张发票的金额和日期",
+      "prompt_sent": "当前发票路径：./test/fixtures/invoice.jpg。\n用户请求：提取这张发票的金额和日期",
+      "expected_tool": "digital_invoice_extract",
+      "actual_tool_calls": [
+        {
+          "name": "digital_invoice_extract",
+          "arguments": {
+            "action": "extract_fields",
+            "fields": [
+              "金额",
+              "日期"
+            ],
+            "input_path": "./test/fixtures/invoice.jpg",
+            "tool_title": "提取发票金额和日期"
+          },
+          "raw_arguments": "{\"action\":\"extract_fields\",\"fields\":[\"金额\", \"日期\"],\"input_path\":\"./test/fixtures/invoice.jpg\",\"tool_title\":\"提取发票金额和日期\"}"
+        }
+      ],
+      "assistant_output": "已提交提取发票金额和日期的请求，工具调用成功。",
+      "success": true,
+      "failure_reason": "",
+      "session_id": "e4a8780a-fe8d-4e23-a22d-6b080566c324",
+      "returncode": 0,
+      "elapsed_seconds": 14.532,
+      "raw_stdout": "已提交提取发票金额和日期的请求，工具调用成功。\n",
+      "raw_stderr": "   Compiling rob v0.1.0 (/mnt/emmc/lxm/ROB)\n    Finished dev [unoptimized + debuginfo] target(s) in 9.78s\n     Running `target/debug/rob ask '当前发票路径：./test/fixtures/invoice.jpg。\n用户请求：提取这张发票的金额和日期' --agent digital_life --approval auto`\nsession: e4a8780a-fe8d-4e23-a22d-6b080566c324\n"
+    },
+    {
+      "query": "提取这份合同的甲乙方",
+      "prompt_sent": "当前合同路径：./test/fixtures/contract.pdf。\n用户请求：提取这份合同的甲乙方",
+      "expected_tool": "digital_contract_extract",
+      "actual_tool_calls": [
+        {
+          "name": "digital_contract_extract",
+          "arguments": {
+            "action": "extract_fields",
+            "fields": [
+              "甲方",
+              "乙方"
+            ],
+            "input_path": "./test/fixtures/contract.pdf",
+            "tool_title": "提取合同甲乙方信息"
+          },
+          "raw_arguments": "{\"action\":\"extract_fields\",\"fields\":[\"甲方\", \"乙方\"],\"input_path\":\"./test/fixtures/contract.pdf\",\"tool_title\":\"提取合同甲乙方信息\"}"
+        }
+      ],
+      "assistant_output": "已提交提取合同甲乙方信息的请求，目标文件为 `./test/fixtures/contract.pdf`。请等待工具返回结果以获取具体信息。",
+      "success": true,
+      "failure_reason": "",
+      "session_id": "03308f7a-b504-4840-aabc-caf993f8c72d",
+      "returncode": 0,
+      "elapsed_seconds": 3.459,
+      "raw_stdout": "已提交提取合同甲乙方信息的请求，目标文件为 `./test/fixtures/contract.pdf`。请等待工具返回结果以获取具体信息。\n",
+      "raw_stderr": "    Finished dev [unoptimized + debuginfo] target(s) in 0.18s\n     Running `target/debug/rob ask '当前合同路径：./test/fixtures/contract.pdf。\n用户请求：提取这份合同的甲乙方' --agent digital_life --approval auto`\nsession: 03308f7a-b504-4840-aabc-caf993f8c72d\n"
+    },
+    {
+      "query": "这张票据上商户是哪家",
+      "prompt_sent": "当前票据路径：./test/fixtures/receipt.jpg。\n用户请求：这张票据上商户是哪家",
+      "expected_tool": "digital_receipt_extract",
+      "actual_tool_calls": [
+        {
+          "name": "digital_receipt_extract",
+          "arguments": {
+            "action": "extract_fields",
+            "fields": [
+              "商户"
+            ],
+            "input_path": "./test/fixtures/receipt.jpg",
+            "tool_title": "提取票据商户名称"
+          },
+          "raw_arguments": "{\"action\":\"extract_fields\",\"fields\":[\"商户\"],\"input_path\":\"./test/fixtures/receipt.jpg\",\"tool_title\":\"提取票据商户名称\"}"
+        }
+      ],
+      "assistant_output": "已提交提取票据商户信息的请求，工具调用已成功。请查看后续返回结果以获取具体商户名称。",
+      "success": true,
+      "failure_reason": "",
+      "session_id": "0002324a-9c4f-4a94-b130-2c451f54d1c9",
+      "returncode": 0,
+      "elapsed_seconds": 3.378,
+      "raw_stdout": "已提交提取票据商户信息的请求，工具调用已成功。请查看后续返回结果以获取具体商户名称。\n",
+      "raw_stderr": "    Finished dev [unoptimized + debuginfo] target(s) in 0.19s\n     Running `target/debug/rob ask '当前票据路径：./test/fixtures/receipt.jpg。\n用户请求：这张票据上商户是哪家' --agent digital_life --approval auto`\nsession: 0002324a-9c4f-4a94-b130-2c451f54d1c9\n"
+    },
+    {
+      "query": "爸爸回来了吗",
+      "prompt_sent": "爸爸回来了吗",
+      "expected_tool": "digital_security_identity_history",
+      "actual_tool_calls": [
+        {
+          "name": "digital_security_identity_history",
+          "arguments": {
+            "time_query": "当前",
+            "tool_title": "查询爸爸是否回来过"
+          },
+          "raw_arguments": "{\"time_query\":\"当前\",\"tool_title\":\"查询爸爸是否回来过\"}"
+        },
+        {
+          "name": "digital_security_identity_history",
+          "arguments": {
+            "time_query": "当前",
+            "tool_title": "查询爸爸是否回来过",
+            "identity_query": "known_person",
+            "person_label": "爸爸"
+          },
+          "raw_arguments": "{\"time_query\":\"当前\",\"tool_title\":\"查询爸爸是否回来过\",\"identity_query\":\"known_person\",\"person_label\":\"爸爸\"}"
+        }
+      ],
+      "assistant_output": "已提交查询：检查当前时间窗口内“爸爸”是否出现过。请确认是否需要查看特定区域（如门口、客厅）或摄像头。",
+      "success": false,
+      "failure_reason": "tool_call_count=2",
+      "session_id": "58213721-9a70-443d-98d7-4dd402366b0d",
+      "returncode": 0,
+      "elapsed_seconds": 5.08,
+      "raw_stdout": "已提交查询：检查当前时间窗口内“爸爸”是否出现过。请确认是否需要查看特定区域（如门口、客厅）或摄像头。\n",
+      "raw_stderr": "    Finished dev [unoptimized + debuginfo] target(s) in 0.18s\n     Running `target/debug/rob ask '爸爸回来了吗' --agent digital_life --approval auto`\nsession: 58213721-9a70-443d-98d7-4dd402366b0d\n"
+    },
+    {
+      "query": "门口那个是谁",
+      "prompt_sent": "门口那个是谁",
+      "expected_tool": "digital_security_current_subject",
+      "actual_tool_calls": [
+        {
+          "name": "digital_security_current_subject",
+          "arguments": {
+            "subject_query": "current_subject",
+            "time_query": "当前",
+            "tool_title": "查询门口当前人物身份",
+            "area": "门口"
+          },
+          "raw_arguments": "{\"subject_query\":\"current_subject\",\"time_query\":\"当前\",\"tool_title\":\"查询门口当前人物身份\",\"area\":\"门口\"}"
+        }
+      ],
+      "assistant_output": "已提交查询：正在检查门口当前画面中的人物身份。请稍后查看结果。",
+      "success": true,
+      "failure_reason": "",
+      "session_id": "b58adbbe-51b9-4523-bd11-64830a2ea4bb",
+      "returncode": 0,
+      "elapsed_seconds": 3.546,
+      "raw_stdout": "已提交查询：正在检查门口当前画面中的人物身份。请稍后查看结果。\n",
+      "raw_stderr": "    Finished dev [unoptimized + debuginfo] target(s) in 0.18s\n     Running `target/debug/rob ask '门口那个是谁' --agent digital_life --approval auto`\nsession: b58adbbe-51b9-4523-bd11-64830a2ea4bb\n"
+    },
+    {
+      "query": "刚才进门的是熟人吗",
+      "prompt_sent": "刚才进门的是熟人吗",
+      "expected_tool": "digital_security_current_subject",
+      "actual_tool_calls": [
+        {
+          "name": "digital_security_current_subject",
+          "arguments": {
+            "subject_query": "是不是熟人",
+            "time_query": "刚才",
+            "tool_title": "查询刚才进门的人是否是熟人"
+          },
+          "raw_arguments": "{\"subject_query\":\"是不是熟人\",\"time_query\":\"刚才\",\"tool_title\":\"查询刚才进门的人是否是熟人\"}"
+        }
+      ],
+      "assistant_output": "已提交查询：刚才进门的人是否是熟人。请等待系统返回识别结果。",
+      "success": false,
+      "failure_reason": "missing familiar",
+      "session_id": "260d8ddd-1d1c-46a0-8ba3-2f929b070e12",
+      "returncode": 0,
+      "elapsed_seconds": 3.218,
+      "raw_stdout": "已提交查询：刚才进门的人是否是熟人。请等待系统返回识别结果。\n",
+      "raw_stderr": "    Finished dev [unoptimized + debuginfo] target(s) in 0.19s\n     Running `target/debug/rob ask '刚才进门的是熟人吗' --agent digital_life --approval auto`\nsession: 260d8ddd-1d1c-46a0-8ba3-2f929b070e12\n"
+    }
+  ]
+}

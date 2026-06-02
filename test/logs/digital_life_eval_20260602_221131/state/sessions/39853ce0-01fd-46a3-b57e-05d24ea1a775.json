@@ -1,0 +1,38 @@
+{
+  "id": "39853ce0-01fd-46a3-b57e-05d24ea1a775",
+  "created_at": 1780410657,
+  "updated_at": 1780410660,
+  "messages": [
+    {
+      "role": "system",
+      "content": "你是 ROB Digital Life，一个个人数字生活专家 agent。你的任务是把用户关于文件、相册、照片元数据、影音播放、监控安防、文档处理、短文本处理、票据/合同字段提取、知识笔记的自然语言请求，解析成明确、可执行的工具调用或直接回答。优先使用本 agent 的专用工具，不要使用 Linux shell 工具。工具选择规则：文件路径属性、单目录列表、目录文件数量用 digital_file_manager；相册列表、共享相册、已有相册命中、照片在哪个相册用 digital_photo_album_search；单张照片拍摄时间/地点/拍摄信息用 digital_photo_metadata；播放、暂停、继续、选集、切音轨/字幕、投屏、播放进度用 digital_media_control；监控事件、区域动静、车辆/快递/人员出现用 digital_security_event_query；已知人脸标签、陌生人、熟人、门口那个是谁用 digital_security_identity_recognition；PDF 单文件/多文件处理用 digital_pdf_document；Word 处理用 digital_word_document；PPT 生成用 digital_ppt_generation；表格/CSV 处理用 digital_spreadsheet；OCR 识别与扫描件转文本用 digital_ocr；票据/合同/发票字段提取用 digital_structured_extract；短文本总结、翻译、润色、改写、压缩、扩写用 digital_text_assistant；笔记打标签、关联、新建主题、关键词检索、笔记问答用 digital_note_knowledge。不要为同一请求拆出不必要的多次工具调用；单文件单动作、单目录直查、单张照片元数据、单关键词笔记检索都只调用一个最匹配的工具。用户原话里的路径、文件名、相册名、影片名、镜头/区域、人物标签、主题名、关键词必须原样写入工具参数，不要泛化或改写。相对时间要保留原文写入 time_query，例如“刚刚”“刚才”“下午”“今晚”“今天”；如果用户明确镜头/区域，也必须写入 area 或 camera_name。“门口那个是谁”“刚才进门的是熟人吗”属于身份识别；“门口有人吗”“客厅有动静吗”“今天有车进出过吗”属于事件查询。“这个文件”“这张照片”“这份 PDF/docx/xlsx”只有在上下文能确定目标时才使用；如果上下文没有目标路径或对象 ID，先用简短中文追问。短文本总结、翻译和润色如果用户直接给出文本，可以直接调用 digital_text_assistant；如果只是普通闲聊或不属于本 agent 能力范围，直接简短回答或说明不能处理。工具调用后，用简洁中文说明已提交或查到的意图；如果工具返回 mock payload，不要声称真实后端已经完成不可验证的操作。"
+    },
+    {
+      "role": "user",
+      "content": "当前 PDF 路径：./test/fixtures/contract.pdf。\n用户请求：作者是谁"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "te064IVNC3R5Zloo4oh7DXvSEQeNxhnV",
+          "type": "function",
+          "function": {
+            "name": "digital_pdf_document",
+            "arguments": "{\"action\":\"get_metadata\",\"input_paths\":[\"./test/fixtures/contract.pdf\"],\"tool_title\":\"查看合同 PDF 的作者信息\",\"question\":\"作者是谁\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "{\n  \"command\": {\n    \"action\": \"get_metadata\",\n    \"input_paths\": [\n      \"./test/fixtures/contract.pdf\"\n    ],\n    \"question\": \"作者是谁\",\n    \"tool_title\": \"查看合同 PDF 的作者信息\"\n  },\n  \"note\": \"normalized digital-life payload; map this to the real album, media, security, document, OCR, note, or text backend integration\",\n  \"status\": \"accepted\",\n  \"tool\": \"digital_pdf_document\"\n}",
+      "tool_call_id": "te064IVNC3R5Zloo4oh7DXvSEQeNxhnV",
+      "name": "digital_pdf_document"
+    },
+    {
+      "role": "assistant",
+      "content": "已提交查询 PDF 元数据以获取作者信息。工具调用已成功接受，等待后端返回结果。"
+    }
+  ]
+}

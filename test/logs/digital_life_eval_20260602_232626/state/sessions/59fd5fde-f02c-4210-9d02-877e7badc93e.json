@@ -1,0 +1,490 @@
+{
+  "id": "59fd5fde-f02c-4210-9d02-877e7badc93e",
+  "created_at": 1780414323,
+  "updated_at": 1780414366,
+  "messages": [
+    {
+      "role": "system",
+      "content": "你是 ROB Digital Life，一个个人数字生活专家 agent。你的任务是把用户关于文件、相册、照片元数据、影音播放、监控安防、文档处理、短文本处理、票据/合同字段提取、知识笔记的自然语言请求，解析成明确、可执行的工具调用或直接回答。优先使用本 agent 的专用工具，不要使用 Linux shell 工具。工具选择规则：文件路径属性、单目录列表、目录文件数量用 digital_file_manager；相册列表、共享相册、已有相册命中、照片在哪个相册用 digital_photo_album_search；单张照片拍摄时间/地点/拍摄信息用 digital_photo_metadata；播放、暂停、继续、选集、切音轨/字幕、投屏、播放进度用 digital_media_control；监控事件、区域动静、车辆/快递/人员出现用 digital_security_event_query；爸爸、妈妈、张三这类已知人物来过没用 digital_security_person_history；陌生人、熟人、送快递的来过这类身份类别历史查询用 digital_security_identity_history；门口那个是谁、刚才进门的是熟人吗这类当前或近时主体识别用 digital_security_current_subject；PDF 单文件/多文件处理用 digital_pdf_document；Word 处理用 digital_word_document；PPT 生成用 digital_ppt_generation；表格/CSV 处理用 digital_spreadsheet；OCR 识别与扫描件转文本用 digital_ocr；发票字段提取用 digital_invoice_extract；合同字段提取用 digital_contract_extract；票据/小票字段提取用 digital_receipt_extract；短文本总结、翻译、润色、改写、压缩、扩写用 digital_text_assistant；笔记打标签、关联、新建主题、关键词检索、笔记问答用 digital_note_knowledge。不要为同一请求拆出不必要的多次工具调用；单文件单动作、单目录直查、单张照片元数据、单关键词笔记检索都只调用一个最匹配的工具。用户原话里的路径、文件名、相册名、影片名、镜头/区域、人物标签、主题名、关键词必须原样写入工具参数，不要泛化或改写。相对时间要保留原文写入 time_query，例如“刚刚”“刚才”“下午”“今晚”“今天”；如果用户明确镜头/区域，也必须写入 area 或 camera_name。“爸爸回来了吗”“张三今天来过没”“妈妈到家了没”属于已知人物历史查询，必须填写 person_label；“客厅有陌生人吗”“送快递的来过吗”属于身份类别历史查询，必须填写 identity_query；“门口那个是谁”“刚才进门的是熟人吗”属于当前或近时主体识别，subject_query 只能填 current_subject、familiar 或 stranger；“刚才进门的是熟人吗”必须填 subject_query=familiar 且 time_query=刚才；“门口有人吗”“客厅有动静吗”“今天有车进出过吗”属于事件查询。提取发票金额和日期必须用 digital_invoice_extract；提取合同甲乙方必须用 digital_contract_extract；提取票据商户必须用 digital_receipt_extract；字段名必须保留用户原文，例如“金额”“日期”“甲方”“乙方”“商户”，不要翻译成英文。“这个文件”“这张照片”“这份 PDF/docx/xlsx”只有在上下文能确定目标时才使用；如果上下文没有目标路径或对象 ID，先用简短中文追问。短文本总结、翻译和润色如果用户直接给出文本，可以直接调用 digital_text_assistant；如果只是普通闲聊或不属于本 agent 能力范围，直接简短回答或说明不能处理。工具调用后，用简洁中文说明已提交或查到的意图；如果工具返回 mock payload，不要声称真实后端已经完成不可验证的操作。"
+    },
+    {
+      "role": "user",
+      "content": "刚才阳台有动静没"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "i9xAIJxq4NYNQfqoCQTzCtlwsmGmXbme",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"motion\",\"time_query\":\"刚才\",\"tool_title\":\"查询阳台刚才的动静事件\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "i9xAIJxq4NYNQfqoCQTzCtlwsmGmXbme",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "ZAeWc5lUr7tT8wfkjP0dwJaVfio2CgCf",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"motion\",\"time_query\":\"刚才\",\"tool_title\":\"查询阳台刚才的动静事件\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "ZAeWc5lUr7tT8wfkjP0dwJaVfio2CgCf",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "0UT7zLUA3mhtHKfCkcfVqxqqE6507u5v",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"motion\",\"time_query\":\"刚才\",\"tool_title\":\"查询阳台刚才的动静事件\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "0UT7zLUA3mhtHKfCkcfVqxqqE6507u5v",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "lkFFPKOM08Dd6u76F2mF8L78pMLaJ9NV",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"motion\",\"time_query\":\"刚才\",\"tool_title\":\"查询阳台刚才的动静事件\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "lkFFPKOM08Dd6u76F2mF8L78pMLaJ9NV",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "BjzC0wywhO5YSoxsHjxds8OOHBigbMpi",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"motion\",\"time_query\":\"刚才\",\"tool_title\":\"查询阳台刚才的动静事件\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "BjzC0wywhO5YSoxsHjxds8OOHBigbMpi",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "1QCEohBpGUbPNQTzj9JxQDkPkK9sXh1P",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"motion\",\"time_query\":\"刚才\",\"tool_title\":\"查询阳台刚才的动静事件\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "1QCEohBpGUbPNQTzj9JxQDkPkK9sXh1P",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "NYZWwUoMdnfb3sldZrI5hLjrazaYkjnQ",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"motion\",\"time_query\":\"刚才\",\"tool_title\":\"查询阳台刚才的动静事件\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "NYZWwUoMdnfb3sldZrI5hLjrazaYkjnQ",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "rOftWBHVVQUQHGEi7vjQgC1PVPgGJhwO",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"motion\",\"time_query\":\"刚才\",\"tool_title\":\"查询阳台刚才的动静事件\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "rOftWBHVVQUQHGEi7vjQgC1PVPgGJhwO",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "JTpPq6IZqltQOBY8KYpcua5xsel9u57i",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"motion\",\"time_query\":\"刚才\",\"tool_title\":\"查询阳台刚才的动静事件\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "JTpPq6IZqltQOBY8KYpcua5xsel9u57i",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "3D9sqwQ0VbVMfQEktWOWk4whGdQ2UpNy",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"motion\",\"time_query\":\"刚才\",\"tool_title\":\"查询阳台刚才的动静事件\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "3D9sqwQ0VbVMfQEktWOWk4whGdQ2UpNy",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "jUOeL8MmCxYhaZYyXIixDyaZGEYmgn74",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"motion\",\"time_query\":\"刚才\",\"tool_title\":\"查询阳台刚才的动静事件\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "jUOeL8MmCxYhaZYyXIixDyaZGEYmgn74",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "2nn3lwGKst24xs8D3kDHBNwkYxvAQnlJ",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"motion\",\"time_query\":\"刚才\",\"tool_title\":\"查询阳台刚才的动静事件\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "2nn3lwGKst24xs8D3kDHBNwkYxvAQnlJ",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "CGXkpGI2GGnHvIJM17PKj9mxDeeIFCf5",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"motion\",\"time_query\":\"刚才\",\"tool_title\":\"查询阳台刚才的动静事件\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "CGXkpGI2GGnHvIJM17PKj9mxDeeIFCf5",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "rE21M7PSOwLksdlnhuSYVu3HQQKjDerO",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"motion\",\"time_query\":\"刚才\",\"tool_title\":\"查询阳台刚才的动静事件\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "rE21M7PSOwLksdlnhuSYVu3HQQKjDerO",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "s9wTmrIDGsW3YeLBjsP7b4YQnZfgbdsZ",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"motion\",\"time_query\":\"刚才\",\"tool_title\":\"查询阳台刚才的动静事件\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "s9wTmrIDGsW3YeLBjsP7b4YQnZfgbdsZ",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "4eizQIjkdXi0Ikzy2cGlcAjZMST5LKrD",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"motion\",\"time_query\":\"刚才\",\"tool_title\":\"查询阳台刚才的动静事件\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "4eizQIjkdXi0Ikzy2cGlcAjZMST5LKrD",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "dbCArzdF5Nvnvl9dUeFvT7wT5Cp9SwFP",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"motion\",\"time_query\":\"刚才\",\"tool_title\":\"查询阳台刚才的动静事件\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "dbCArzdF5Nvnvl9dUeFvT7wT5Cp9SwFP",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "tnqTQ0lRGTmJ8HE0YfmgXY8LDIYTkJnx",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"motion\",\"time_query\":\"刚才\",\"tool_title\":\"查询阳台刚才的动静事件\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "tnqTQ0lRGTmJ8HE0YfmgXY8LDIYTkJnx",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "kUVcaR1i8ghz7LgsB1QdhrWUMQxXc7vj",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"motion\",\"time_query\":\"刚才\",\"tool_title\":\"查询阳台刚才的动静事件\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "kUVcaR1i8ghz7LgsB1QdhrWUMQxXc7vj",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "EtyfnqES7z1BYV3yTGW6RoGBy1yEzTlv",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"motion\",\"time_query\":\"刚才\",\"tool_title\":\"查询阳台刚才的动静事件\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "EtyfnqES7z1BYV3yTGW6RoGBy1yEzTlv",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "U4R2nvLPjhDeziZhbv1zidKsTJ3DhGKL",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"motion\",\"time_query\":\"刚才\",\"tool_title\":\"查询阳台刚才的动静事件\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "U4R2nvLPjhDeziZhbv1zidKsTJ3DhGKL",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "Sis7anosfInhzcs6Qi2Svjt9LUtIA66Y",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"motion\",\"time_query\":\"刚才\",\"tool_title\":\"查询阳台刚才的动静事件\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "Sis7anosfInhzcs6Qi2Svjt9LUtIA66Y",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "3w0MmwZybOrNA19JBaSqzzSV2IK1bzP1",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"motion\",\"time_query\":\"刚才\",\"tool_title\":\"查询阳台刚才的动静事件\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "3w0MmwZybOrNA19JBaSqzzSV2IK1bzP1",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "urJ4o9oNNhnoZO97DWFrTmQEPKpSjyQR",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"motion\",\"time_query\":\"刚才\",\"tool_title\":\"查询阳台刚才的动静事件\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "urJ4o9oNNhnoZO97DWFrTmQEPKpSjyQR",
+      "name": "digital_security_event_query"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "5MGKUU87BKoChmxTMT71m0A0KDvsQ7Dv",
+          "type": "function",
+          "function": {
+            "name": "digital_security_event_query",
+            "arguments": "{\"event_type\":\"motion\",\"time_query\":\"刚才\",\"tool_title\":\"查询阳台刚才的动静事件\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tool error: missing one of required string arguments: area, camera_name",
+      "tool_call_id": "5MGKUU87BKoChmxTMT71m0A0KDvsQ7Dv",
+      "name": "digital_security_event_query"
+    }
+  ]
+}
