@@ -4,6 +4,7 @@ use crate::context::{inject_runtime_context, prepare_context, ContextWindowConfi
 use crate::llm::{
     assistant_message, assistant_text_message, chat_completion_stream, content_as_text,
     parse_tool_arguments, system_text_message, tool_message, user_message, ChatMessage, ToolCall,
+    Usage,
 };
 use crate::state;
 use crate::tools::{run_tool, tool_context_prompt};
@@ -26,6 +27,7 @@ pub enum AgentEvent {
         threshold: usize,
         compacted: bool,
     },
+    TokenUsage(Usage),
     ToolCallStarted {
         id: String,
         name: String,
@@ -150,6 +152,7 @@ impl AgentSession {
             match event {
                 AgentEvent::AssistantDelta(delta) => on_delta(&delta)?,
                 AgentEvent::ContextWindow { .. }
+                | AgentEvent::TokenUsage(_)
                 | AgentEvent::ToolCallStarted { .. }
                 | AgentEvent::ToolCallCompleted { .. }
                 | AgentEvent::ToolCallFailed { .. }
@@ -188,7 +191,7 @@ impl AgentSession {
                 threshold: context_config.token_threshold,
                 compacted: prepared_context.compacted,
             })?;
-            let model_message = chat_completion_stream(
+            let model_turn = chat_completion_stream(
                 profile,
                 &request_messages,
                 &tools,
@@ -197,6 +200,8 @@ impl AgentSession {
                 |delta| on_event(AgentEvent::AssistantDelta(delta.to_string())),
             )
             .await?;
+            let usage = model_turn.usage;
+            let model_message = model_turn.message;
             let tool_calls = model_message.tool_calls.clone().unwrap_or_default();
             let assistant = assistant_message(model_message);
             let answer = content_as_text(assistant.content.clone());
@@ -204,19 +209,32 @@ impl AgentSession {
             self.persist()?;
 
             if tool_calls.is_empty() {
+                if let Some(usage) = usage {
+                    on_event(AgentEvent::TokenUsage(usage))?;
+                }
                 return Ok(answer);
             }
 
+            let mut repeated_invalid_tool_message = None;
             for call in tool_calls {
                 let outcome = self
                     .run_and_append_tool_call(call, &mut on_event, &mut invalid_tool_counts)
                     .await?;
                 if let ToolOutcome::InvalidRepeated(message) = outcome {
-                    self.messages.push(assistant_text_message(&message));
-                    self.persist()?;
-                    on_event(AgentEvent::AssistantDelta(message.clone()))?;
-                    return Ok(message);
+                    repeated_invalid_tool_message = Some(message);
+                    break;
                 }
+            }
+
+            if let Some(usage) = usage {
+                on_event(AgentEvent::TokenUsage(usage))?;
+            }
+
+            if let Some(message) = repeated_invalid_tool_message {
+                self.messages.push(assistant_text_message(&message));
+                self.persist()?;
+                on_event(AgentEvent::AssistantDelta(message.clone()))?;
+                return Ok(message);
             }
 
             invalid_tool_counts.clear();
@@ -537,10 +555,14 @@ pub async fn run_repl(
                     "/config" => println!("{}", session.config_summary()?),
                     "/id" => println!("{}", session.id()),
                     _ => {
+                        let mut has_pending_assistant_line = false;
                         let response = session
                             .send_user_message_events(input, |event| {
                                 match event {
                                     AgentEvent::AssistantDelta(delta) => {
+                                        if !delta.is_empty() {
+                                            has_pending_assistant_line = true;
+                                        }
                                         print!("{delta}");
                                         io::stdout().flush()?;
                                     }
@@ -554,11 +576,27 @@ pub async fn run_repl(
                                             "[context {state}: ~{estimated_tokens}/{threshold} tokens]"
                                         );
                                     }
+                                    AgentEvent::TokenUsage(usage) => {
+                                        if has_pending_assistant_line {
+                                            println!();
+                                            has_pending_assistant_line = false;
+                                        }
+                                        eprintln!(
+                                            "[tokens prompt={} generated={} cached={}]",
+                                            format_optional_usize(usage.prompt_tokens),
+                                            format_optional_usize(usage.completion_tokens),
+                                            format_optional_usize(usage.cached_tokens)
+                                        );
+                                    }
                                     AgentEvent::ToolCallStarted {
                                         id,
                                         name,
                                         arguments,
                                     } => {
+                                        if has_pending_assistant_line {
+                                            println!();
+                                            has_pending_assistant_line = false;
+                                        }
                                         eprintln!("[tool calling {name} #{id} args={arguments}]");
                                     }
                                     AgentEvent::ToolCallCompleted { id, name, .. } => {
@@ -574,7 +612,7 @@ pub async fn run_repl(
                                 Ok(())
                             })
                             .await?;
-                        if !response.trim().is_empty() {
+                        if has_pending_assistant_line && !response.trim().is_empty() {
                             println!();
                         }
                     }
@@ -587,6 +625,12 @@ pub async fn run_repl(
     }
 
     Ok(())
+}
+
+fn format_optional_usize(value: Option<usize>) -> String {
+    value
+        .map(|value| value.to_string())
+        .unwrap_or_else(|| "-".to_string())
 }
 
 fn print_help() {

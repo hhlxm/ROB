@@ -1,5 +1,6 @@
 use crate::agent::{AgentEvent, AgentSession};
 use crate::config::{ApprovalPolicy, RobConfig};
+use crate::llm::Usage;
 use anyhow::Result;
 use crossterm::{
     event::{self, Event, KeyCode, KeyEventKind, KeyModifiers},
@@ -227,6 +228,26 @@ impl TuiApp {
         self.push_tool_event(ToolStatus::Denied, id, name, None);
     }
 
+    fn push_token_usage(&mut self, usage: &Usage) {
+        let usage = format_token_usage(usage);
+        if let Some(content) = &mut self.streaming_assistant {
+            if !content.ends_with('\n') {
+                content.push('\n');
+            }
+            content.push_str(&usage);
+            return;
+        }
+
+        if self.lines.last().is_some_and(|line| line.spans.is_empty()) {
+            self.lines.pop();
+        }
+        self.lines.push(Line::from(vec![
+            Span::styled("  `- ", Style::default().fg(Color::DarkGray)),
+            Span::styled(usage, Style::default().fg(Color::DarkGray)),
+        ]));
+        self.lines.push(Line::raw(""));
+    }
+
     fn push_agent_event(&mut self, event: AgentEvent) {
         match event {
             AgentEvent::AssistantDelta(delta) => {
@@ -243,6 +264,10 @@ impl TuiApp {
                 } else {
                     format!("Context: ~{estimated_tokens}/{threshold} tokens")
                 };
+            }
+            AgentEvent::TokenUsage(usage) => {
+                self.push_token_usage(&usage);
+                self.status = "Model usage updated".to_string();
             }
             AgentEvent::ToolCallStarted {
                 id,
@@ -577,4 +602,19 @@ fn status_line(text: &str, accent: Color) -> Line<'static> {
         ));
     }
     Line::from(spans)
+}
+
+fn format_token_usage(usage: &Usage) -> String {
+    format!(
+        "Tokens: prompt {} | generated {} | cached {}",
+        format_optional_usize(usage.prompt_tokens),
+        format_optional_usize(usage.completion_tokens),
+        format_optional_usize(usage.cached_tokens)
+    )
+}
+
+fn format_optional_usize(value: Option<usize>) -> String {
+    value
+        .map(|value| value.to_string())
+        .unwrap_or_else(|| "-".to_string())
 }

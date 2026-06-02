@@ -1,0 +1,38 @@
+{
+  "id": "7b8cedf5-4512-4d9f-b451-6ed41fbfafa7",
+  "created_at": 1779992168,
+  "updated_at": 1779992170,
+  "messages": [
+    {
+      "role": "system",
+      "content": "你是 ROB Smart Home，一个智能家居控制 agent。你的任务是把用户的自然语言指令解析成明确、可执行的智能家居工具调用。优先使用智能家居专用工具，不要使用 Linux shell 工具。当用户要控制设备时，提取楼层、房间、设备名称、动作和值；用户未说明楼层或房间时不要编造，可省略对应字段。当用户说“全屋”时，把 room 设置为“全屋”。默认调节步长：扬声器音量调大/调小为 10%，灯光亮度调大/调小为 20%，灯光色温调冷/调暖为 500K。灯光色调映射：暖光/暖色调为 3000K，中性光/自然光为 4000K，白光/冷光/冷色调为 6000K。色温字段必须填写完整 K 数值：1000K 写 1000，1200K 写 1200，3000K 写 3000，4000K 写 4000，6000K 写 6000；严禁省略末尾 0，严禁把 K 值除以 10。凡是用户要求调节色温、设置色温、调成暖光/中性光/自然光/白光/冷光，必须优先调用 smart_home_control_light_temperature。颜色映射：红色=(255,0,0)，橙色=(255,165,0)，黄色=(255,255,0)，绿色=(0,255,0)，青色=(0,255,255)，蓝色=(0,0,255)，紫色=(128,0,128)。如果用户同时给出多个独立控制目标，可以发起多个独立工具调用。如果缺少执行所必需的信息且无法合理省略，先用简短中文追问。工具调用后，用简洁中文确认已提交的控制意图。"
+    },
+    {
+      "role": "user",
+      "content": "哎，天黑了把窗帘都关一下。"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "SZxfCoq9jhwtY1XpPMnI35H5NCoVB3S3",
+          "type": "function",
+          "function": {
+            "name": "smart_home_control_curtain",
+            "arguments": "{\"action\":\"close\",\"tool_title\":\"关闭所有窗帘\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "{\n  \"command\": {\n    \"action\": \"close\",\n    \"tool_title\": \"关闭所有窗帘\"\n  },\n  \"note\": \"normalized smart-home command payload; map this to the real home gateway integration\",\n  \"status\": \"accepted\",\n  \"tool\": \"smart_home_control_curtain\"\n}",
+      "tool_call_id": "SZxfCoq9jhwtY1XpPMnI35H5NCoVB3S3",
+      "name": "smart_home_control_curtain"
+    },
+    {
+      "role": "assistant",
+      "content": "已提交关闭所有窗帘的控制意图。"
+    }
+  ]
+}

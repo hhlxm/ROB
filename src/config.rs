@@ -2,6 +2,7 @@ use anyhow::{anyhow, Context, Result};
 use clap::ValueEnum;
 use serde::{Deserialize, Serialize};
 use std::{env, fmt, fs, path::PathBuf};
+use url::Url;
 use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -100,6 +101,60 @@ impl RobConfig {
         self.profiles
             .retain(|candidate| candidate.name != profile.name);
         self.profiles.push(profile);
+    }
+
+    pub fn add_active_profile(&mut self, profile: ProviderProfile) -> Result<()> {
+        if self
+            .profiles
+            .iter()
+            .any(|candidate| candidate.name == profile.name)
+        {
+            return Err(anyhow!(
+                "provider profile `{}` already exists; choose a different --name or pass --replace",
+                profile.name
+            ));
+        }
+
+        self.active_profile_id = profile.id.clone();
+        self.profiles.push(profile);
+        Ok(())
+    }
+
+    pub fn replace_active_profile(&mut self, mut profile: ProviderProfile) {
+        if let Some(existing) = self
+            .profiles
+            .iter_mut()
+            .find(|candidate| candidate.name == profile.name)
+        {
+            profile.id = existing.id.clone();
+            self.active_profile_id = profile.id.clone();
+            *existing = profile;
+            return;
+        }
+
+        self.active_profile_id = profile.id.clone();
+        self.profiles.push(profile);
+    }
+
+    pub fn next_profile_name(&self, base_url: &str, model: &str) -> String {
+        let base = if self.profiles.is_empty() {
+            "default".to_string()
+        } else {
+            suggested_profile_name(base_url, model)
+        };
+        let mut candidate = base.clone();
+        let mut suffix = 2;
+
+        while self
+            .profiles
+            .iter()
+            .any(|profile| profile.name == candidate)
+        {
+            candidate = format!("{base}-{suffix}");
+            suffix += 1;
+        }
+
+        candidate
     }
 
     pub fn set_active_profile_by_ref(&mut self, profile_ref: &str) -> Result<()> {
@@ -232,6 +287,56 @@ fn normalize_base_url(value: &str) -> String {
     value.trim().trim_end_matches('/').to_string()
 }
 
+fn suggested_profile_name(base_url: &str, model: &str) -> String {
+    let raw_name = Url::parse(&normalize_base_url(base_url))
+        .ok()
+        .and_then(|url| url.host_str().map(host_profile_name))
+        .unwrap_or_else(|| model.to_string());
+
+    sanitize_profile_name(&raw_name)
+}
+
+fn host_profile_name(host: &str) -> String {
+    if host
+        .chars()
+        .all(|character| character.is_ascii_digit() || character == '.')
+    {
+        return host.to_string();
+    }
+
+    let labels: Vec<&str> = host.split('.').filter(|label| !label.is_empty()).collect();
+    if labels.len() >= 3 && matches!(labels[0], "api" | "www") {
+        return labels[1].to_string();
+    }
+    if labels.len() >= 2 {
+        return labels[labels.len() - 2].to_string();
+    }
+
+    host.to_string()
+}
+
+fn sanitize_profile_name(raw: &str) -> String {
+    let mut output = String::new();
+    let mut last_was_separator = false;
+
+    for character in raw.trim().chars() {
+        if character.is_ascii_alphanumeric() {
+            output.push(character.to_ascii_lowercase());
+            last_was_separator = false;
+        } else if !output.is_empty() && !last_was_separator {
+            output.push('-');
+            last_was_separator = true;
+        }
+    }
+
+    let output = output.trim_matches('-');
+    if output.is_empty() {
+        "provider".to_string()
+    } else {
+        output.to_string()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -268,5 +373,107 @@ mod tests {
         config.set_active_profile_by_ref("primary").unwrap();
 
         assert_eq!(config.active_profile_id, expected_id);
+    }
+
+    #[test]
+    fn config_add_active_profile_rejects_duplicate_names() {
+        let mut config = RobConfig::default();
+        config
+            .add_active_profile(ProviderProfile::new(
+                "primary".to_string(),
+                "https://example.com/v1".to_string(),
+                "model-a".to_string(),
+                Some("KEY_A".to_string()),
+                None,
+                "openai-compatible".to_string(),
+            ))
+            .unwrap();
+
+        let error = config
+            .add_active_profile(ProviderProfile::new(
+                "primary".to_string(),
+                "https://api.example.com/v1".to_string(),
+                "model-b".to_string(),
+                Some("KEY_B".to_string()),
+                None,
+                "openai-compatible".to_string(),
+            ))
+            .unwrap_err();
+
+        assert!(error.to_string().contains("already exists"));
+        assert_eq!(config.profiles.len(), 1);
+        assert_eq!(config.profiles[0].api_key_env.as_deref(), Some("KEY_A"));
+    }
+
+    #[test]
+    fn config_replace_active_profile_preserves_profile_id() {
+        let original = ProviderProfile::new(
+            "primary".to_string(),
+            "https://example.com/v1".to_string(),
+            "model-a".to_string(),
+            Some("KEY_A".to_string()),
+            None,
+            "openai-compatible".to_string(),
+        );
+        let expected_id = original.id.clone();
+        let mut config = RobConfig::default();
+        config.add_active_profile(original).unwrap();
+
+        config.replace_active_profile(ProviderProfile::new(
+            "primary".to_string(),
+            "https://api.example.com/v1".to_string(),
+            "model-b".to_string(),
+            Some("KEY_B".to_string()),
+            None,
+            "openai-compatible".to_string(),
+        ));
+
+        assert_eq!(config.profiles.len(), 1);
+        assert_eq!(config.profiles[0].id, expected_id);
+        assert_eq!(config.profiles[0].model, "model-b");
+        assert_eq!(config.profiles[0].api_key_env.as_deref(), Some("KEY_B"));
+        assert_eq!(config.active_profile_id, expected_id);
+    }
+
+    #[test]
+    fn config_generates_unique_names_for_implicit_profiles() {
+        let mut config = RobConfig::default();
+
+        assert_eq!(
+            config.next_profile_name("https://api.openai.com/v1", "gpt"),
+            "default"
+        );
+
+        config
+            .add_active_profile(ProviderProfile::new(
+                "default".to_string(),
+                "https://api.openai.com/v1".to_string(),
+                "gpt".to_string(),
+                Some("OPENAI_API_KEY".to_string()),
+                None,
+                "openai-compatible".to_string(),
+            ))
+            .unwrap();
+
+        assert_eq!(
+            config.next_profile_name("https://api.deepseek.com/v1", "deepseek-chat"),
+            "deepseek"
+        );
+
+        config
+            .add_active_profile(ProviderProfile::new(
+                "deepseek".to_string(),
+                "https://api.deepseek.com/v1".to_string(),
+                "deepseek-chat".to_string(),
+                Some("DEEPSEEK_API_KEY".to_string()),
+                None,
+                "openai-compatible".to_string(),
+            ))
+            .unwrap();
+
+        assert_eq!(
+            config.next_profile_name("https://api.deepseek.com/v1", "deepseek-reasoner"),
+            "deepseek-2"
+        );
     }
 }

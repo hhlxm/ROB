@@ -1,9 +1,9 @@
 use crate::config::{ProviderProfile, ReasoningEffort};
 use crate::tools::{ToolFunctionSpec, ToolSpec};
-use anyhow::{Context, Result};
+use anyhow::{anyhow, Context, Result};
 use futures_util::StreamExt;
 use reqwest::Client;
-use serde::{Deserialize, Serialize};
+use serde::{de, Deserialize, Deserializer, Serialize};
 use serde_json::Value;
 use std::collections::BTreeMap;
 
@@ -77,11 +77,56 @@ struct ChatCompletionThinking {
     thinking_type: String,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct Usage {
     pub prompt_tokens: Option<usize>,
     pub completion_tokens: Option<usize>,
     pub total_tokens: Option<usize>,
+    pub cached_tokens: Option<usize>,
+}
+
+#[derive(Deserialize)]
+struct UsageWire {
+    #[serde(default, deserialize_with = "deserialize_optional_usize")]
+    prompt_tokens: Option<usize>,
+    #[serde(default, deserialize_with = "deserialize_optional_usize")]
+    completion_tokens: Option<usize>,
+    #[serde(default, deserialize_with = "deserialize_optional_usize")]
+    total_tokens: Option<usize>,
+    #[serde(default, deserialize_with = "deserialize_optional_usize")]
+    cached_tokens: Option<usize>,
+    #[serde(default)]
+    prompt_tokens_details: Option<PromptTokensDetailsWire>,
+}
+
+#[derive(Deserialize)]
+struct PromptTokensDetailsWire {
+    #[serde(default, deserialize_with = "deserialize_optional_usize")]
+    cached_tokens: Option<usize>,
+}
+
+impl<'de> Deserialize<'de> for Usage {
+    fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let wire = UsageWire::deserialize(deserializer)?;
+        Ok(Self {
+            prompt_tokens: wire.prompt_tokens,
+            completion_tokens: wire.completion_tokens,
+            total_tokens: wire.total_tokens,
+            cached_tokens: wire.cached_tokens.or_else(|| {
+                wire.prompt_tokens_details
+                    .and_then(|details| details.cached_tokens)
+            }),
+        })
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct ChatCompletionTurn {
+    pub message: ChatMessage,
+    pub usage: Option<Usage>,
 }
 
 #[derive(Debug, Default)]
@@ -105,7 +150,7 @@ pub async fn chat_completion_stream<F>(
     tool_choice: Option<&str>,
     reasoning_effort: ReasoningEffort,
     mut on_delta: F,
-) -> Result<ChatMessage>
+) -> Result<ChatCompletionTurn>
 where
     F: FnMut(&str) -> Result<()>,
 {
@@ -124,7 +169,7 @@ where
         },
         tools,
         tool_choice,
-        parallel_tool_calls: true,
+        parallel_tool_calls: false,
         functions: None,
         function_call: None,
         reasoning_effort: reasoning_effort.as_request_value(),
@@ -133,22 +178,8 @@ where
         audio: None,
     };
 
-    let response = Client::new()
-        .post(endpoint)
-        .bearer_auth(api_key)
-        .json(&request)
-        .send()
-        .await
-        .context("streaming chat completion request failed")?;
-
-    let status = response.status();
-    if !status.is_success() {
-        let body = response
-            .text()
-            .await
-            .context("failed to read model response")?;
-        anyhow::bail!("model provider returned HTTP {status}: {body}");
-    }
+    let client = Client::new();
+    let response = send_chat_completion_request(&client, &endpoint, &api_key, &request).await?;
 
     let mut content = String::new();
     let mut reasoning = String::new();
@@ -191,26 +222,110 @@ where
     }
 
     let tool_calls = build_tool_calls(tool_calls);
-    Ok(ChatMessage {
-        role: "assistant".to_string(),
-        content: if content.is_empty() {
-            None
-        } else {
-            Some(content)
+    Ok(ChatCompletionTurn {
+        message: ChatMessage {
+            role: "assistant".to_string(),
+            content: if content.is_empty() {
+                None
+            } else {
+                Some(content)
+            },
+            reasoning_content: if reasoning.is_empty() {
+                None
+            } else {
+                Some(reasoning)
+            },
+            tool_calls: if tool_calls.is_empty() {
+                None
+            } else {
+                Some(tool_calls)
+            },
+            tool_call_id: None,
+            name: None,
         },
-        reasoning_content: if reasoning.is_empty() {
-            None
-        } else {
-            Some(reasoning)
-        },
-        tool_calls: if tool_calls.is_empty() {
-            None
-        } else {
-            Some(tool_calls)
-        },
-        tool_call_id: None,
-        name: None,
+        usage,
     })
+}
+
+async fn send_chat_completion_request(
+    client: &Client,
+    endpoint: &str,
+    api_key: &str,
+    request: &ChatCompletionRequest<'_>,
+) -> Result<reqwest::Response> {
+    let mut retry_tool_json_error = false;
+    for attempt in 0..2 {
+        let response = client
+            .post(endpoint)
+            .bearer_auth(api_key)
+            .json(request)
+            .send()
+            .await
+            .context("streaming chat completion request failed")?;
+
+        let status = response.status();
+        if status.is_success() {
+            return Ok(response);
+        }
+
+        let body = response
+            .text()
+            .await
+            .context("failed to read model response")?;
+        if attempt == 0 && is_provider_tool_json_parse_error(status.as_u16(), &body) {
+            retry_tool_json_error = true;
+            continue;
+        }
+
+        let retry_note = if retry_tool_json_error {
+            " after retry"
+        } else {
+            ""
+        };
+        return Err(anyhow!(
+            "model provider returned HTTP {status}{retry_note}: {body}"
+        ));
+    }
+
+    Err(anyhow!(
+        "chat completion request retry loop exited unexpectedly"
+    ))
+}
+
+fn is_provider_tool_json_parse_error(status: u16, body: &str) -> bool {
+    status >= 500
+        && body.contains("Failed to parse tool call arguments as JSON")
+        && body.contains("parse_error")
+}
+
+fn deserialize_optional_usize<'de, D>(
+    deserializer: D,
+) -> std::result::Result<Option<usize>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let value = Option::<Value>::deserialize(deserializer)?;
+    match value {
+        None | Some(Value::Null) => Ok(None),
+        Some(Value::Number(number)) => number
+            .as_u64()
+            .and_then(|value| usize::try_from(value).ok())
+            .map(Some)
+            .ok_or_else(|| de::Error::custom("expected a non-negative integer token count")),
+        Some(Value::String(text)) => {
+            let text = text.trim();
+            if text.is_empty() {
+                Ok(None)
+            } else {
+                text.parse::<usize>()
+                    .map(Some)
+                    .map_err(|_| de::Error::custom("expected token count string to be an integer"))
+            }
+        }
+        Some(_) => Err(de::Error::custom(
+            "expected token count to be an integer, string, or null",
+        )),
+    }
 }
 
 impl ReasoningEffort {
@@ -856,7 +971,7 @@ mod tests {
             },
             tools: &tools,
             tool_choice: Some("auto"),
-            parallel_tool_calls: true,
+            parallel_tool_calls: false,
             functions: None,
             function_call: None,
             reasoning_effort: Some("high"),
@@ -870,10 +985,42 @@ mod tests {
         assert_eq!(value["max_completion_tokens"], 16_384);
         assert_eq!(value["stream_options"]["include_usage"], true);
         assert_eq!(value["tool_choice"], "auto");
-        assert_eq!(value["parallel_tool_calls"], true);
+        assert_eq!(value["parallel_tool_calls"], false);
         assert_eq!(value["reasoning_effort"], "high");
         assert!(value.get("functions").is_none());
         assert!(value.get("function_call").is_none());
+    }
+
+    #[test]
+    fn detects_provider_tool_json_parse_errors() {
+        let body = r#"{"error":{"message":"Failed to parse tool call arguments as JSON: [json.exception.parse_error.101] parse error","type":"server_error"}}"#;
+
+        assert!(is_provider_tool_json_parse_error(500, body));
+        assert!(!is_provider_tool_json_parse_error(400, body));
+        assert!(!is_provider_tool_json_parse_error(500, "other error"));
+    }
+
+    #[test]
+    fn usage_deserializer_accepts_numeric_strings() {
+        let usage: Usage = serde_json::from_str(
+            r#"{"prompt_tokens":"15","completion_tokens":100,"total_tokens":"115","cached_tokens":"8"}"#,
+        )
+        .unwrap();
+
+        assert_eq!(usage.prompt_tokens, Some(15));
+        assert_eq!(usage.completion_tokens, Some(100));
+        assert_eq!(usage.total_tokens, Some(115));
+        assert_eq!(usage.cached_tokens, Some(8));
+    }
+
+    #[test]
+    fn usage_deserializer_accepts_nested_cached_tokens() {
+        let usage: Usage = serde_json::from_str(
+            r#"{"prompt_tokens":15,"completion_tokens":100,"total_tokens":115,"prompt_tokens_details":{"cached_tokens":7}}"#,
+        )
+        .unwrap();
+
+        assert_eq!(usage.cached_tokens, Some(7));
     }
 
     #[test]
@@ -1144,6 +1291,8 @@ mod tests {
         .unwrap();
 
         assert_eq!(reasoning, "think");
-        assert_eq!(usage.unwrap().prompt_tokens, Some(12));
+        let usage = usage.unwrap();
+        assert_eq!(usage.prompt_tokens, Some(12));
+        assert_eq!(usage.cached_tokens, None);
     }
 }

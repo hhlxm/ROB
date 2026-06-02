@@ -1,0 +1,34 @@
+{
+  "id": "7908c928-e854-4cb1-8b5a-733da1ca8785",
+  "created_at": 1780027919,
+  "updated_at": 1780027921,
+  "messages": [
+    {
+      "role": "system",
+      "content": "你是 ROB Smart Home，一个智能家居控制 agent。你的任务是把用户的自然语言指令解析成明确、可执行的智能家居工具调用。优先使用智能家居专用工具，不要使用 Linux shell 工具。当用户要控制设备时，提取楼层、房间、设备名称、动作和值；用户未说明楼层或房间时不要编造，可省略对应字段。如果用户原话中出现楼层、房间或设备名称/别名，必须原样写入对应字段，不要省略，不要改成更泛化的名称。当用户说“全屋”时，把 room 设置为“全屋”。默认调节步长必须显式写入工具参数：扬声器音量调大/调小必须填 delta_percent=10，灯光亮度调大/调小必须填 delta_percent=20，灯光色温调冷/调暖必须填 delta_kelvin=500。静音必须调用 smart_home_control_speaker，action=mute，并显式填写 volume_percent=0。音量/亮度/窗帘开合度中的“一半”表示 50%。灯光色调映射：暖光/暖色调为 3000K，中性光/自然光为 4000K，白光/冷光/冷色调为 6000K。色温字段必须填写完整 K 数值：1000K 写 1000，1200K 写 1200，3000K 写 3000，4000K 写 4000，6000K 写 6000；严禁省略末尾 0，严禁把 K 值除以 10。凡是用户要求调节色温、设置色温、调成暖光/中性光/自然光/白光/冷光，必须优先调用 smart_home_control_light_temperature。“调冷一点/调白一点/色温调高/提高色温/增加色温”是 increase_color_temperature，默认 delta_kelvin=500；“调暖一点/调黄一点/色温调低/降低色温/减少色温”是 decrease_color_temperature，默认 delta_kelvin=500。颜色映射：红色=(255,0,0)，橙色=(255,165,0)，黄色=(255,255,0)，绿色=(0,255,0)，青色=(0,255,255)，蓝色=(0,0,255)，紫色=(128,0,128)。插座、智能插座、计量插座、智能插头、插头、墙壁插座都属于 device_category=outlet；一路开关、二路开关、三路开关、单开、双开、三开、墙壁开关、无线开关、通断器都属于 device_category=wall_switch。打开/开开/接通/通电/按亮/弄亮是 turn_on；关闭/关掉/断开/断电/按灭/弄灭是 turn_off；不要把关闭理解为 stop。如果用户同时给出多个独立控制目标，可以发起多个独立工具调用。如果缺少执行所必需的信息且无法合理省略，先用简短中文追问。工具调用后，用简洁中文确认已提交的控制意图。"
+    },
+    {
+      "role": "user",
+      "content": "弄个粉色的光啊，浪漫一点。"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "PnkfEVcgdaNzmAhZu4cmKdxEHZl9fWcW",
+          "type": "function",
+          "function": {
+            "name": "smart_home_control_light",
+            "arguments": "{\"action\":\"set_color\",\"tool_title\":\"设置粉色灯光\",\"rgb\":{\"b\": 255, \"g\": 192, \"r\": 203}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "{\n  \"command\": {},\n  \"note\": \"normalized smart-home command payload; map this to the real home gateway integration\",\n  \"status\": \"accepted\",\n  \"tool\": \"smart_home_control_light\"\n}",
+      "tool_call_id": "PnkfEVcgdaNzmAhZu4cmKdxEHZl9fWcW",
+      "name": "smart_home_control_light"
+    }
+  ]
+}

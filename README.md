@@ -79,6 +79,19 @@ cargo run -- config use deepseek
 cargo run -- config path
 ```
 
+`config set` 默认新增一个 provider 并切换为 active，不会静默覆盖同名配置。再次配置同名 provider 时请显式传入 `--replace`：
+
+```bash
+cargo run -- config set \
+  --name deepseek \
+  --base-url https://api.deepseek.com/v1 \
+  --api-key-env DEEPSEEK_API_KEY \
+  --model deepseek-chat \
+  --replace
+```
+
+如果不传 `--name`，第一次会使用 `default`，后续会根据 `base-url` 自动生成不冲突的名字，例如 `deepseek`、`deepseek-2`。
+
 上下文窗口管理和思考强度：
 
 ```bash
@@ -156,6 +169,7 @@ ROB 支持多个 agent。每个 agent 都有自己的 system prompt 和可用工
 - `main`：默认 Linux agent，保留此前 ROB 的 prompt 和完整工具集合。
 - `reader`：只读检查 agent，使用独立 prompt，只暴露 `pwd`、`list_dir`、`read_file`、`search_text`。
 - `smart_home`：智能家居控制 agent，使用中文 prompt，只暴露灯光、窗帘、扬声器、插座/墙壁开关、场景模式等专用控制工具。
+- `digital_life`：个人数字生活 agent，覆盖文件、相册、照片元数据、影音播放、监控安防、文档处理、短文本处理、知识笔记等场景，主要返回 mock 规范化 payload。
 
 查看 agent：
 
@@ -164,6 +178,7 @@ cargo run -- agents list
 cargo run -- agents show main
 cargo run -- agents show reader
 cargo run -- agents show smart_home
+cargo run -- agents show digital_life
 ```
 
 指定 agent：
@@ -173,6 +188,7 @@ cargo run -- ask "查看 README 的主要内容" --agent reader
 cargo run -- chat --agent main
 cargo run -- tui --agent reader
 cargo run -- ask "把一楼客厅主灯亮度调到 50%" --agent smart_home
+cargo run -- ask "/Downloads 里有啥" --agent digital_life
 ```
 
 恢复 session 时，如果没有传 `--agent`，ROB 会根据 session 第一条 system prompt 识别对应 agent；如果显式传入 `--agent`，则以当前参数为准。
@@ -237,6 +253,24 @@ ROB 的 `/chat/completions` JSON body 也按 OpenOmniBot 的结构构建：`mess
 cargo run -- tools list --agent smart_home
 cargo run -- tools run smart_home_control_light '{"floor":"一楼","room":"客厅","device_name":"主灯","action":"set_brightness","brightness_percent":50}'
 cargo run -- tools run smart_home_control_scene '{"scene_name":"回家模式","action":"activate"}'
+```
+
+个人数字生活 agent 的专用工具：
+
+- `digital_file_manager`：已知路径属性、文件大小、单目录列表、单目录文件计数。该工具会真实读取本地文件系统元数据。
+- `digital_photo_library`：相册列表、共享相册、相册搜索、照片所在相册、单张照片拍摄信息。
+- `digital_media_control`：播放、暂停、继续、选集、切换音轨/字幕、投屏、播放进度查询。
+- `digital_security_monitor`：监控事件查询、区域动静、车辆/快递/人员出现、已知人脸标签和陌生人识别。
+- `digital_document_workspace`：PDF、Word、PPT、表格、OCR、结构化字段提取、文档元信息查询。
+- `digital_text_assistant`：短文本总结、翻译、润色、改写、扩写、压缩。
+- `digital_note_knowledge`：笔记打标签、关联笔记、新建主题、关键词检索、笔记问答。
+
+除 `digital_file_manager` 外，这些工具当前返回规范化 mock payload，方便后续接入相册索引、媒体服务、安防服务、OCR、文档处理或知识库后端。示例：
+
+```bash
+cargo run -- tools list --agent digital_life
+cargo run -- tools run digital_file_manager '{"action":"count_directory","path":"."}'
+cargo run -- tools run digital_media_control '{"action":"cast_to_device","target_device":"客厅电视"}'
 ```
 
 ## 工具审批策略

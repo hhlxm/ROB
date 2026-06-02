@@ -7,7 +7,7 @@ mod state;
 mod tools;
 mod tui;
 
-use anyhow::Result;
+use anyhow::{bail, Result};
 use clap::{Parser, Subcommand};
 use config::{ApprovalPolicy, ProviderProfile, ReasoningEffort, RobConfig};
 use std::io::{self, Write};
@@ -93,10 +93,11 @@ enum Command {
 
 #[derive(Subcommand)]
 enum ConfigCommand {
-    /// Create or replace the active provider profile.
+    /// Create a provider profile and make it active.
     Set {
-        #[arg(long, default_value = "default")]
-        name: String,
+        /// Provider profile name. If omitted, ROB picks a non-conflicting name.
+        #[arg(long)]
+        name: Option<String>,
         #[arg(long)]
         base_url: String,
         #[arg(long)]
@@ -107,6 +108,9 @@ enum ConfigCommand {
         api_key: Option<String>,
         #[arg(long, default_value = "openai-compatible")]
         protocol: String,
+        /// Replace an existing profile with the same name.
+        #[arg(long)]
+        replace: bool,
     },
     /// Show the active provider profile.
     Show,
@@ -234,14 +238,30 @@ async fn handle_config(command: ConfigCommand) -> Result<()> {
             api_key_env,
             api_key,
             protocol,
+            replace,
         } => {
-            let profile =
-                ProviderProfile::new(name, base_url, model, api_key_env, api_key, protocol);
             let mut config = RobConfig::load_or_default()?;
-            config.set_active_profile(profile);
+            let profile_name = match name {
+                Some(name) if !name.trim().is_empty() => name.trim().to_string(),
+                Some(_) => bail!("provider profile name cannot be empty"),
+                None => config.next_profile_name(&base_url, &model),
+            };
+            let profile = ProviderProfile::new(
+                profile_name.clone(),
+                base_url,
+                model,
+                api_key_env,
+                api_key,
+                protocol,
+            );
+            if replace {
+                config.replace_active_profile(profile);
+            } else {
+                config.add_active_profile(profile)?;
+            }
             config.save()?;
             println!(
-                "Saved active provider to {}",
+                "Saved active provider `{profile_name}` to {}",
                 config::config_path()?.display()
             );
             Ok(())
