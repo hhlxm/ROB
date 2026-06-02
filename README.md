@@ -258,10 +258,17 @@ cargo run -- tools run smart_home_control_scene '{"scene_name":"回家模式","a
 个人数字生活 agent 的专用工具：
 
 - `digital_file_manager`：已知路径属性、文件大小、单目录列表、单目录文件计数。该工具会真实读取本地文件系统元数据。
-- `digital_photo_library`：相册列表、共享相册、相册搜索、照片所在相册、单张照片拍摄信息。
+- `digital_photo_album_search`：相册列表、共享相册、相册搜索、照片所在相册。
+- `digital_photo_metadata`：单张照片拍摄时间、地点、相机和 EXIF 信息。
 - `digital_media_control`：播放、暂停、继续、选集、切换音轨/字幕、投屏、播放进度查询。
-- `digital_security_monitor`：监控事件查询、区域动静、车辆/快递/人员出现、已知人脸标签和陌生人识别。
-- `digital_document_workspace`：PDF、Word、PPT、表格、OCR、结构化字段提取、文档元信息查询。
+- `digital_security_event_query`：监控事件查询、区域动静、车辆/快递/人员出现。
+- `digital_security_identity_recognition`：已知人脸标签、陌生人、熟人、快递员和当前画面主体识别。
+- `digital_pdf_document`：PDF 加密、拆页、合并、旋转、水印、表单提取和元信息查询。
+- `digital_word_document`：Word 创建、文本替换、批注提取、目录添加和元信息查询。
+- `digital_ppt_generation`：按短大纲或要点生成 PPT。
+- `digital_spreadsheet`：xlsx 公式列、CSV 转 xlsx、筛选行、新建表格。
+- `digital_ocr`：图片/截图文字识别、扫描件转可搜索文本。
+- `digital_structured_extract`：发票、票据、合同等单文件字段提取。
 - `digital_text_assistant`：短文本总结、翻译、润色、改写、扩写、压缩。
 - `digital_note_knowledge`：笔记打标签、关联笔记、新建主题、关键词检索、笔记问答。
 
@@ -270,6 +277,7 @@ cargo run -- tools run smart_home_control_scene '{"scene_name":"回家模式","a
 ```bash
 cargo run -- tools list --agent digital_life
 cargo run -- tools run digital_file_manager '{"action":"count_directory","path":"."}'
+cargo run -- tools run digital_pdf_document '{"action":"extract_pages","input_paths":["合同.pdf"],"page_range":"3-10"}'
 cargo run -- tools run digital_media_control '{"action":"cast_to_device","target_device":"客厅电视"}'
 ```
 

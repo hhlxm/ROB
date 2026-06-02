@@ -647,6 +647,264 @@ pub fn tool_specs() -> Vec<ToolSpec> {
             }),
         ),
         tool(
+            "digital_photo_album_search",
+            "Submit a normalized album-library query. Use for listing albums, listing shared albums, finding an existing album by name, or locating which album contains a natural-language photo target.",
+            json!({
+                "type": "object",
+                "properties": {
+                    "action": {
+                        "type": "string",
+                        "enum": ["list_albums", "list_shared_albums", "search_album", "find_photo_album"],
+                        "description": "我有哪些相册=list_albums；分享出去的相册=list_shared_albums；查宝宝相册=search_album；猫的照片在哪个相册=find_photo_album。"
+                    },
+                    "album_query": {
+                        "type": "string",
+                        "description": "相册名或相册关键词，例如“宝宝相册”。search_album 时填写。"
+                    },
+                    "photo_query": {
+                        "type": "string",
+                        "description": "照片自然语言目标，例如“猫的照片”。find_photo_album 时填写。"
+                    }
+                },
+                "required": ["action"],
+                "additionalProperties": false
+            }),
+        ),
+        tool(
+            "digital_photo_metadata",
+            "Submit a normalized single-photo metadata query. Use for capture time, location, camera, EXIF, or full shooting information of one known photo.",
+            json!({
+                "type": "object",
+                "properties": {
+                    "action": {
+                        "type": "string",
+                        "enum": ["get_capture_time", "get_location", "get_shooting_info"],
+                        "description": "什么时候拍的=get_capture_time；在哪拍的=get_location；拍摄信息/EXIF=get_shooting_info。"
+                    },
+                    "photo_id": {
+                        "type": "string",
+                        "description": "上下文中已有的照片 ID。photo_id 和 photo_path 至少填写一个。"
+                    },
+                    "photo_path": {
+                        "type": "string",
+                        "description": "单张照片文件路径。photo_id 和 photo_path 至少填写一个。"
+                    },
+                    "metadata_fields": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "enum": ["captured_at", "location", "camera", "exif"]
+                        },
+                        "description": "需要查看的字段。"
+                    }
+                },
+                "required": ["action"],
+                "additionalProperties": false
+            }),
+        ),
+        tool(
+            "digital_security_event_query",
+            "Submit a normalized security event query. Use for checking whether a camera or area saw a person, motion, vehicle, package, or entry event in a time window.",
+            json!({
+                "type": "object",
+                "properties": {
+                    "area": {
+                        "type": "string",
+                        "description": "用户提到的区域或房间，例如“门口”“院子”“客厅”“宝宝房间”“阳台”。area 和 camera_name 至少填写一个。"
+                    },
+                    "camera_name": {
+                        "type": "string",
+                        "description": "明确的摄像头名称。area 和 camera_name 至少填写一个。"
+                    },
+                    "time_query": {
+                        "type": "string",
+                        "description": "时间窗口原文，例如“刚刚”“刚才”“今天”“下午”“今晚”。未说明但语义是当前状态时填“当前”。"
+                    },
+                    "event_type": {
+                        "type": "string",
+                        "enum": ["person", "motion", "vehicle", "package", "entry", "unknown"],
+                        "description": "有人=person；动静=motion；车进出=vehicle；快递=package；进门/回来=entry；不明确填 unknown。"
+                    }
+                },
+                "required": ["time_query", "event_type"],
+                "additionalProperties": false
+            }),
+        ),
+        tool(
+            "digital_security_identity_recognition",
+            "Submit a normalized security identity-recognition query. Use for known face labels, strangers, familiar people, couriers, or identifying the current subject near a camera.",
+            json!({
+                "type": "object",
+                "properties": {
+                    "area": {
+                        "type": "string",
+                        "description": "用户提到的区域或房间，例如“门口”“客厅”。area 和 camera_name 至少填写一个。"
+                    },
+                    "camera_name": {
+                        "type": "string",
+                        "description": "明确的摄像头名称。area 和 camera_name 至少填写一个。"
+                    },
+                    "time_query": {
+                        "type": "string",
+                        "description": "时间窗口原文，例如“刚刚”“今天”“刚才”。未说明但语义是当前画面时填“当前”。"
+                    },
+                    "person_label": {
+                        "type": "string",
+                        "description": "已知人脸库标签或人物称谓，例如“爸爸”“妈妈”“张三”。"
+                    },
+                    "identity_query": {
+                        "type": "string",
+                        "enum": ["known_person", "stranger", "familiar", "courier", "current_subject"],
+                        "description": "熟人/已知人=known_person 或 familiar；陌生人=stranger；送快递的=courier；门口那个是谁=current_subject。"
+                    }
+                },
+                "required": ["time_query"],
+                "additionalProperties": false
+            }),
+        ),
+        tool(
+            "digital_pdf_document",
+            "Submit a normalized PDF operation. Use for encrypting, extracting pages, merging, rotating, adding watermark, extracting forms, or reading PDF metadata.",
+            json!({
+                "type": "object",
+                "properties": {
+                    "action": {
+                        "type": "string",
+                        "enum": ["encrypt", "extract_pages", "merge", "rotate", "add_watermark", "extract_form", "get_metadata"],
+                        "description": "PDF 加密码=encrypt；拆页=extract_pages；合并=merge；旋转=rotate；加水印=add_watermark；提取表单=extract_form；多少页/标题/作者/出版日期=get_metadata。"
+                    },
+                    "input_paths": {
+                        "type": "array",
+                        "items": { "type": "string" },
+                        "description": "输入 PDF 路径。merge 至少两个；其他动作通常一个。"
+                    },
+                    "output_path": { "type": "string", "description": "输出 PDF 路径。" },
+                    "password": { "type": "string", "description": "encrypt 必填的密码。" },
+                    "page_range": { "type": "string", "description": "extract_pages 必填的页码范围，例如“3-10”。" },
+                    "rotation": {
+                        "type": "string",
+                        "enum": ["left", "right", "180", "portrait", "landscape"],
+                        "description": "rotate 必填的方向。"
+                    },
+                    "watermark_text": { "type": "string", "description": "add_watermark 必填的水印文字。" },
+                    "question": { "type": "string", "description": "get_metadata 的元信息问题，例如“多少页”“作者是谁”。" }
+                },
+                "required": ["action", "input_paths"],
+                "additionalProperties": false
+            }),
+        ),
+        tool(
+            "digital_word_document",
+            "Submit a normalized Word document operation. Use for creating a docx, replacing text, extracting comments, adding a TOC, or reading Word metadata.",
+            json!({
+                "type": "object",
+                "properties": {
+                    "action": {
+                        "type": "string",
+                        "enum": ["create", "replace_text", "extract_comments", "add_toc", "get_metadata"],
+                        "description": "创建 Word=create；替换文本=replace_text；提取批注=extract_comments；加目录=add_toc；标题/作者/日期=get_metadata。"
+                    },
+                    "input_path": { "type": "string", "description": "输入 docx 路径。create 可省略。" },
+                    "output_path": { "type": "string", "description": "输出 docx 路径。" },
+                    "title": { "type": "string", "description": "create 时的新文档标题。" },
+                    "body": { "type": "string", "description": "create 时的新文档正文或要点。" },
+                    "find_text": { "type": "string", "description": "replace_text 必填的原文字。" },
+                    "replace_text": { "type": "string", "description": "replace_text 必填的新文字。" },
+                    "question": { "type": "string", "description": "get_metadata 的元信息问题。" }
+                },
+                "required": ["action"],
+                "additionalProperties": false
+            }),
+        ),
+        tool(
+            "digital_ppt_generation",
+            "Submit a normalized PPT generation request. Use for creating slides from a short outline, product-introduction points, or one single-topic brief.",
+            json!({
+                "type": "object",
+                "properties": {
+                    "action": {
+                        "type": "string",
+                        "enum": ["create_from_outline"],
+                        "description": "按短大纲或要点生成 PPT。"
+                    },
+                    "outline": { "type": "string", "description": "PPT 大纲或要点。" },
+                    "slide_count": { "type": "integer", "minimum": 1, "maximum": 50, "description": "PPT 页数，例如 5 页填 5。" },
+                    "title": { "type": "string", "description": "PPT 标题或主题。" },
+                    "output_path": { "type": "string", "description": "输出 PPT 路径。" }
+                },
+                "required": ["action", "outline"],
+                "additionalProperties": false
+            }),
+        ),
+        tool(
+            "digital_spreadsheet",
+            "Submit a normalized spreadsheet operation. Use for xlsx formula columns, CSV to xlsx conversion, row filtering, or creating a new spreadsheet.",
+            json!({
+                "type": "object",
+                "properties": {
+                    "action": {
+                        "type": "string",
+                        "enum": ["add_formula_column", "csv_to_xlsx", "filter_rows", "create"],
+                        "description": "加公式列=add_formula_column；CSV 转 xlsx=csv_to_xlsx；筛选行=filter_rows；新建表格=create。"
+                    },
+                    "input_path": { "type": "string", "description": "输入 xlsx/csv 路径。create 可省略。" },
+                    "output_path": { "type": "string", "description": "输出文件路径。" },
+                    "formula": { "type": "string", "description": "add_formula_column 的公式描述。" },
+                    "column_name": { "type": "string", "description": "新增列名。" },
+                    "filter_condition": { "type": "string", "description": "filter_rows 的筛选条件，例如“金额大于 1000”。" },
+                    "sheet_name": { "type": "string", "description": "工作表名称。" }
+                },
+                "required": ["action"],
+                "additionalProperties": false
+            }),
+        ),
+        tool(
+            "digital_ocr",
+            "Submit a normalized OCR request. Use for extracting text from one image, screenshot, photo, or one-page scan, and for making scanned text searchable.",
+            json!({
+                "type": "object",
+                "properties": {
+                    "action": {
+                        "type": "string",
+                        "enum": ["extract_text", "make_searchable_text"],
+                        "description": "识别图片/截图文字=extract_text；扫描件转可搜索文本=make_searchable_text。"
+                    },
+                    "input_path": { "type": "string", "description": "输入图片或扫描件路径。" },
+                    "output_path": { "type": "string", "description": "输出文本或可搜索文档路径。" },
+                    "language_hint": { "type": "string", "description": "语言提示，例如“中文”“英文”。" }
+                },
+                "required": ["action", "input_path"],
+                "additionalProperties": false
+            }),
+        ),
+        tool(
+            "digital_structured_extract",
+            "Submit a normalized structured-field extraction request. Use for extracting invoice amount/date, contract parties, merchant names, or other named fields from one file.",
+            json!({
+                "type": "object",
+                "properties": {
+                    "action": {
+                        "type": "string",
+                        "enum": ["extract_fields"],
+                        "description": "从单文件提取指定字段。"
+                    },
+                    "input_path": { "type": "string", "description": "输入票据、发票、合同、图片或 PDF 路径。" },
+                    "document_type": {
+                        "type": "string",
+                        "enum": ["invoice", "receipt", "contract", "ticket", "image", "pdf", "unknown"],
+                        "description": "文档类型。"
+                    },
+                    "fields": {
+                        "type": "array",
+                        "items": { "type": "string" },
+                        "description": "要提取的字段，例如金额、日期、甲方、乙方、商户。"
+                    }
+                },
+                "required": ["action", "input_path", "fields"],
+                "additionalProperties": false
+            }),
+        ),
+        tool(
             "digital_text_assistant",
             "Submit a short-text language task. Use for summarization, translation, polishing, style rewrite, expansion, and compression of short text.",
             json!({
@@ -748,9 +1006,19 @@ pub async fn run_tool(name: &str, args: Value) -> Result<String> {
         | "smart_home_control_scene" => smart_home_command(name, args),
         "digital_file_manager" => digital_file_manager(args),
         "digital_photo_library"
+        | "digital_photo_album_search"
+        | "digital_photo_metadata"
         | "digital_media_control"
         | "digital_security_monitor"
+        | "digital_security_event_query"
+        | "digital_security_identity_recognition"
         | "digital_document_workspace"
+        | "digital_pdf_document"
+        | "digital_word_document"
+        | "digital_ppt_generation"
+        | "digital_spreadsheet"
+        | "digital_ocr"
+        | "digital_structured_extract"
         | "digital_text_assistant"
         | "digital_note_knowledge" => digital_life_mock_command(name, args),
         _ => Err(anyhow!("unknown tool `{name}`")),
@@ -1042,12 +1310,126 @@ fn count_directory_entries(args: &Value, raw_path: &str, path: &Path) -> Result<
 }
 
 fn digital_life_mock_command(name: &str, args: Value) -> Result<String> {
+    validate_digital_life_args(name, &args)?;
     Ok(serde_json::to_string_pretty(&json!({
         "status": "accepted",
         "tool": name,
         "command": args,
         "note": "normalized digital-life payload; map this to the real album, media, security, document, OCR, note, or text backend integration"
     }))?)
+}
+
+fn validate_digital_life_args(name: &str, args: &Value) -> Result<()> {
+    match name {
+        "digital_photo_album_search" => match required_string_arg(args, "action")?.as_str() {
+            "search_album" => require_any_string(args, &["album_query"]),
+            "find_photo_album" => require_any_string(args, &["photo_query"]),
+            _ => Ok(()),
+        },
+        "digital_photo_metadata" => {
+            require_any_string(args, &["photo_id", "photo_path"])?;
+            Ok(())
+        }
+        "digital_security_event_query" => {
+            require_any_string(args, &["area", "camera_name"])?;
+            required_string_arg(args, "time_query")?;
+            required_string_arg(args, "event_type")?;
+            Ok(())
+        }
+        "digital_security_identity_recognition" => {
+            require_any_string(args, &["area", "camera_name"])?;
+            required_string_arg(args, "time_query")?;
+            require_any_string(args, &["person_label", "identity_query"])?;
+            Ok(())
+        }
+        "digital_pdf_document" => validate_pdf_document_args(args),
+        "digital_word_document" => validate_word_document_args(args),
+        "digital_ppt_generation" => {
+            required_string_arg(args, "outline")?;
+            Ok(())
+        }
+        "digital_spreadsheet" => validate_spreadsheet_args(args),
+        "digital_ocr" => {
+            required_string_arg(args, "input_path")?;
+            Ok(())
+        }
+        "digital_structured_extract" => {
+            required_string_arg(args, "input_path")?;
+            require_nonempty_array(args, "fields")?;
+            Ok(())
+        }
+        _ => Ok(()),
+    }
+}
+
+fn validate_pdf_document_args(args: &Value) -> Result<()> {
+    let action = required_string_arg(args, "action")?;
+    require_nonempty_array(args, "input_paths")?;
+    match action.as_str() {
+        "encrypt" => {
+            required_string_arg(args, "password")?;
+        }
+        "extract_pages" => {
+            required_string_arg(args, "page_range")?;
+        }
+        "merge" => {
+            let count = args
+                .get("input_paths")
+                .and_then(Value::as_array)
+                .map_or(0, Vec::len);
+            if count < 2 {
+                return Err(anyhow!(
+                    "digital_pdf_document merge requires at least two input_paths"
+                ));
+            }
+        }
+        "rotate" => {
+            required_string_arg(args, "rotation")?;
+        }
+        "add_watermark" => {
+            required_string_arg(args, "watermark_text")?;
+        }
+        _ => {}
+    }
+    Ok(())
+}
+
+fn validate_word_document_args(args: &Value) -> Result<()> {
+    let action = required_string_arg(args, "action")?;
+    match action.as_str() {
+        "create" => {
+            require_any_string(args, &["title", "body"])?;
+        }
+        "replace_text" => {
+            required_string_arg(args, "input_path")?;
+            required_string_arg(args, "find_text")?;
+            required_string_arg(args, "replace_text")?;
+        }
+        "extract_comments" | "add_toc" | "get_metadata" => {
+            required_string_arg(args, "input_path")?;
+        }
+        _ => {}
+    }
+    Ok(())
+}
+
+fn validate_spreadsheet_args(args: &Value) -> Result<()> {
+    let action = required_string_arg(args, "action")?;
+    match action.as_str() {
+        "add_formula_column" => {
+            required_string_arg(args, "input_path")?;
+            required_string_arg(args, "formula")?;
+        }
+        "csv_to_xlsx" => {
+            required_string_arg(args, "input_path")?;
+        }
+        "filter_rows" => {
+            required_string_arg(args, "input_path")?;
+            required_string_arg(args, "filter_condition")?;
+        }
+        _ => {}
+    }
+    Ok(())
 }
 
 fn expand_user_path(path: &str) -> PathBuf {
@@ -1273,6 +1655,30 @@ fn string_arg(args: &Value, key: &str) -> Option<String> {
 
 fn required_string_arg(args: &Value, key: &str) -> Result<String> {
     string_arg(args, key).ok_or_else(|| anyhow!("missing string argument `{key}`"))
+}
+
+fn require_any_string(args: &Value, keys: &[&str]) -> Result<()> {
+    if keys
+        .iter()
+        .any(|key| string_arg(args, key).is_some_and(|value| !value.trim().is_empty()))
+    {
+        return Ok(());
+    }
+
+    Err(anyhow!(
+        "missing one of required string arguments: {}",
+        keys.join(", ")
+    ))
+}
+
+fn require_nonempty_array(args: &Value, key: &str) -> Result<()> {
+    let Some(array) = args.get(key).and_then(Value::as_array) else {
+        return Err(anyhow!("missing array argument `{key}`"));
+    };
+    if array.is_empty() {
+        return Err(anyhow!("array argument `{key}` must not be empty"));
+    }
+    Ok(())
 }
 
 fn usize_arg(args: &Value, key: &str) -> Option<usize> {
@@ -1522,25 +1928,40 @@ mod tests {
     #[test]
     fn digital_life_schemas_expose_grouped_actions() {
         let specs = tool_specs();
-        let document = specs
+        let pdf = specs
             .iter()
-            .find(|spec| spec.function.name == "digital_document_workspace")
+            .find(|spec| spec.function.name == "digital_pdf_document")
+            .unwrap();
+        let ocr = specs
+            .iter()
+            .find(|spec| spec.function.name == "digital_ocr")
+            .unwrap();
+        let security = specs
+            .iter()
+            .find(|spec| spec.function.name == "digital_security_event_query")
             .unwrap();
         let media = specs
             .iter()
             .find(|spec| spec.function.name == "digital_media_control")
             .unwrap();
 
-        assert!(document.function.parameters["properties"]["action"]["enum"]
+        assert!(pdf.function.parameters["properties"]["action"]["enum"]
             .as_array()
             .unwrap()
             .iter()
-            .any(|value| value == "pdf_merge"));
-        assert!(document.function.parameters["properties"]["action"]["enum"]
+            .any(|value| value == "merge"));
+        assert!(ocr.function.parameters["properties"]["action"]["enum"]
             .as_array()
             .unwrap()
             .iter()
-            .any(|value| value == "ocr_extract_text"));
+            .any(|value| value == "extract_text"));
+        assert!(
+            security.function.parameters["properties"]["event_type"]["enum"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|value| value == "package")
+        );
         assert!(media.function.parameters["properties"]["action"]["enum"]
             .as_array()
             .unwrap()
@@ -1581,5 +2002,33 @@ mod tests {
         assert!(result.contains(r#""status": "accepted""#));
         assert!(result.contains(r#""tool": "digital_media_control""#));
         assert!(result.contains("客厅电视"));
+    }
+
+    #[tokio::test]
+    async fn digital_life_split_tools_validate_action_slots() {
+        let missing_password = run_tool(
+            "digital_pdf_document",
+            json!({
+                "tool_title": "给 PDF 加密",
+                "action": "encrypt",
+                "input_paths": ["合同.pdf"]
+            }),
+        )
+        .await;
+        let valid_extract = run_tool(
+            "digital_structured_extract",
+            json!({
+                "tool_title": "提取发票金额日期",
+                "action": "extract_fields",
+                "input_path": "发票.png",
+                "fields": ["金额", "日期"]
+            }),
+        )
+        .await
+        .unwrap();
+
+        assert!(missing_password.is_err());
+        assert!(valid_extract.contains(r#""tool": "digital_structured_extract""#));
+        assert!(valid_extract.contains("金额"));
     }
 }
