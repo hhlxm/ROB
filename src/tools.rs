@@ -704,17 +704,17 @@ pub fn tool_specs() -> Vec<ToolSpec> {
         ),
         tool(
             "digital_security_event_query",
-            "Submit a normalized security event query. Use for checking whether a camera or area saw a person, motion, vehicle, package, or entry event in a time window.",
+            "Submit a normalized security event query. Use for checking whether a camera, an area, or the whole home saw a person, motion, vehicle, package, or entry event in a time window. If the user mentions a place such as 门口、院子、客厅、宝宝房间、阳台, copy it exactly into area; do not put the place only in tool_title.",
             json!({
                 "type": "object",
                 "properties": {
                     "area": {
                         "type": "string",
-                        "description": "用户提到的区域或房间，例如“门口”“院子”“客厅”“宝宝房间”“阳台”。area 和 camera_name 至少填写一个。"
+                        "description": "用户原文提到的区域或房间，例如“门口”“院子”“客厅”“宝宝房间”“阳台”。只要用户说了区域就必须填写，并逐字保留；不要只写在 tool_title。用户没有提到区域时省略，表示全局/默认安防范围。"
                     },
                     "camera_name": {
                         "type": "string",
-                        "description": "明确的摄像头名称。area 和 camera_name 至少填写一个。"
+                        "description": "用户原文明确提到的摄像头名称。没有摄像头名但有区域时填 area；用户都没有提到时省略，表示全局/默认安防范围。"
                     },
                     "time_query": {
                         "type": "string",
@@ -1495,9 +1495,12 @@ fn validate_digital_life_args(name: &str, args: &Value) -> Result<()> {
             Ok(())
         }
         "digital_security_event_query" => {
-            require_any_string(args, &["area", "camera_name"])?;
             required_string_arg(args, "time_query")?;
-            required_string_arg(args, "event_type")?;
+            require_enum_arg(
+                args,
+                "event_type",
+                &["person", "motion", "vehicle", "package", "entry", "unknown"],
+            )?;
             Ok(())
         }
         "digital_security_identity_recognition" => {
@@ -2275,9 +2278,31 @@ mod tests {
             }),
         )
         .await;
+        let valid_home_event = run_tool(
+            "digital_security_event_query",
+            json!({
+                "tool_title": "查询今晚是否有人来过",
+                "time_query": "今晚",
+                "event_type": "person"
+            }),
+        )
+        .await
+        .unwrap();
+        let invalid_event = run_tool(
+            "digital_security_event_query",
+            json!({
+                "tool_title": "查询门口是否有声音",
+                "area": "门口",
+                "time_query": "当前",
+                "event_type": "sound"
+            }),
+        )
+        .await;
 
         assert!(missing_password.is_err());
         assert!(invalid_subject.is_err());
+        assert!(invalid_event.is_err());
+        assert!(valid_home_event.contains(r#""tool": "digital_security_event_query""#));
         assert!(valid_extract.contains(r#""tool": "digital_invoice_extract""#));
         assert!(valid_extract.contains("金额"));
     }
