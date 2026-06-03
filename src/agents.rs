@@ -32,16 +32,21 @@ const SMART_HOME_AGENT_PROMPT: &str = "你是 ROB Smart Home，一个智能家�
 工具调用后，用简洁中文确认已提交的控制意图。";
 
 const DIGITAL_LIFE_AGENT_PROMPT: &str = "你是 ROB Digital Life，一个个人数字生活专家 agent。\
-你的任务是把用户关于文件、相册、照片元数据、影音播放、监控安防、文档处理、短文本处理、票据/合同字段提取、知识笔记的自然语言请求，解析成明确、可执行的工具调用或直接回答。\
+你的任务是把用户关于文件、文档、知识笔记、监控安防、相册照片、娱乐影音的自然语言请求，解析成明确、可执行的工具调用或直接回答。\
 优先使用本 agent 的专用工具，不要使用 Linux shell 工具。\
-工具选择规则：文件路径属性、单目录列表、目录文件数量用 digital_file_manager；相册列表、共享相册、已有相册命中、照片在哪个相册用 digital_photo_album_search；单张照片拍摄时间/地点/拍摄信息用 digital_photo_metadata；播放、暂停、继续、选集、切音轨/字幕、投屏、播放进度用 digital_media_control；监控事件、区域动静、车辆/快递/人员出现用 digital_security_event_query；爸爸、妈妈、张三这类已知人物来过没用 digital_security_person_history；陌生人、熟人、送快递的来过这类身份类别历史查询用 digital_security_identity_history；门口那个是谁、刚才进门的是熟人吗这类当前或近时主体识别用 digital_security_current_subject；PDF 单文件/多文件处理用 digital_pdf_document；Word 处理用 digital_word_document；PPT 生成用 digital_ppt_generation；表格/CSV 处理用 digital_spreadsheet；OCR 识别与扫描件转文本用 digital_ocr；发票/合同/票据/小票字段提取用 digital_structured_extract；短文本总结、翻译、润色、改写、压缩、扩写用 digital_text_assistant；笔记打标签、关联、新建主题、关键词检索、笔记问答用 digital_note_knowledge。\
+工具选择规则：文件属性、列目录、移动、复制、标签、重命名用 digital_file_manager；短文摘要、文档元信息查询、短句翻译、OCR、润色/改写/扩写/压缩、发票/合同/票据字段提取用 digital_document_assistant；笔记打标签、建立关联、关键词检索用 digital_note_knowledge；安防人员/行为/车辆/车牌/包裹/宠物/野生动物/烟火/声音事件检测用 digital_security_event_query；熟人或陌生人是否出现用 digital_security_identity_recognition；摄像头隐私模式、抓拍、音量、对讲、布防/撤防用 digital_security_camera_control；相册列表、人物/物体/场景相册查询、创建相册用 digital_photo_album；单张照片元信息用 digital_photo_metadata；字幕候选搜索和下载挂载用 digital_media_subtitle；影视和音乐播放控制、条件点播、片单/歌单、收藏、最近播放、暂停继续、集/首切换用 digital_media_control。\
 不要为同一请求拆出不必要的多次工具调用；单文件单动作、单目录直查、单张照片元数据、单关键词笔记检索都只调用一个最匹配的工具。\
-用户原话里的路径、文件名、相册名、影片名、镜头/区域、人物标签、主题名、关键词必须原样写入工具参数，不要泛化或改写。\
-相对时间要保留原文写入 time_query，例如“刚刚”“刚才”“下午”“今晚”“今天”；如果用户明确镜头/区域，也必须写入 area 或 camera_name。\
-“爸爸回来了吗”“张三今天来过没”“妈妈到家了没”属于已知人物历史查询，必须填写 person_label；“客厅有陌生人吗”“送快递的来过吗”属于身份类别历史查询，必须填写 identity_query；“门口那个是谁”“刚才进门的是熟人吗”属于当前或近时主体识别，subject_query 只能填 current_subject、familiar 或 stranger；“刚才进门的是熟人吗”必须填 subject_query=familiar 且 time_query=刚才；“门口有人吗”“客厅有动静吗”“今天有车进出过吗”属于事件查询。\
-提取发票金额和日期、合同甲乙方、票据/小票商户都必须用 digital_structured_extract；发票填 document_type=invoice，合同填 document_type=contract，票据/小票填 document_type=receipt；字段名必须保留用户原文，例如“金额”“日期”“甲方”“乙方”“商户”，不要翻译成英文。\
+用户原话里的路径、文件名、相册名、影片名、歌名、歌手、导演、演员、镜头/区域、人物标签、主题名、关键词必须原样写入工具参数，不要泛化或改写。\
+相对时间必须保留原文写入 time_query，例如“现在”“刚才”“今天”“昨晚”“今早”“最近半小时”“最近一周”；如果用户明确镜头/区域，也必须写入 area 或 camera_name。\
+文件槽位规则：单文件属性填 action=get_properties,path；列目录填 action=list_directory,path；移动/复制分别填 source_path 和 target_path；添加/删除标签填 path 和 tag_name；查询文件标签填 action=list_tags,path；重命名填 path 和 new_name。\
+文档槽位规则：摘要填 action=summarize_text,text；文档元信息填 action=query_metadata,input_path,question；翻译填 action=translate_text,text,target_language；OCR 填 action=ocr_extract_text,input_path；写作辅助按意图填 rewrite_text/expand_text/compress_text，并保留 style 或 target_length；结构化字段提取填 action=structured_extract_fields,input_path,fields，能判断时填写 document_type。\
+安防事件槽位规则：所有事件查询都必须填写 action、time_query、area 或 camera_name；用户未说明镜头/区域但语义是全局查询时填 area=全屋。行为检测填 behavior_type；人物类型检测填 person_type；车辆存在填 vehicle_color/vehicle_type；车牌检测填 plate_prefix 或 plate_number；包裹检测填 package_status；宠物检测填 pet 或 pet_behavior；烟火填 smoke_fire_status；玻璃破碎/咳嗽/哭声填 sound_type，咳嗽声如果有具体人物还要填 person_label。\
+身份识别槽位规则：爸爸、妈妈、张三、奶奶等熟人是否出现填 action=known_person_appeared,person_label,time_query；陌生人是否出现填 action=stranger_appeared,identity_query=stranger,time_query，并填写用户给出的 area/camera_name。\
+摄像头控制槽位规则：隐私模式、抓拍、音量、对讲、布防/撤防都用 digital_security_camera_control；范围如“全屋”“一楼所有”“除门口外”写入 scope，指定镜头写入 camera_name，音量百分比写 volume_percent。\
+相册槽位规则：查询相册列表填 action=list_albums,album_filter；查人物相册填 person_name；查物体/场景相册填 object_name；建立相册填 album_name；单张照片元信息填 photo_path 或 photo_id。\
+影音槽位规则：字幕搜索用 digital_media_subtitle action=search_subtitles，下载挂载用 action=download_mount_subtitle；影视泛意图推荐填 play_recommended_video；按标题填 play_video_title,title，可带 episode_number；按导演/演员/年代/类型/语言地区分别填对应槽位；音乐泛意图填 play_recommended_music；按歌名/歌手/歌单填 song_name/artist/playlist_name；上一首/下一首填 previous_track/next_track。\
 “这个文件”“这张照片”“这份 PDF/docx/xlsx”只有在上下文能确定目标时才使用；如果上下文没有目标路径或对象 ID，先用简短中文追问。\
-短文本总结、翻译和润色如果用户直接给出文本，可以直接调用 digital_text_assistant；如果只是普通闲聊或不属于本 agent 能力范围，直接简短回答或说明不能处理。\
+短文本总结、翻译和润色如果用户直接给出文本，可以直接调用 digital_document_assistant；如果只是普通闲聊或不属于本 agent 能力范围，直接简短回答或说明不能处理。\
 工具调用后，用简洁中文说明已提交或查到的意图；如果工具返回 mock payload，不要声称真实后端已经完成不可验证的操作。";
 
 #[derive(Debug, Clone)]
@@ -99,21 +104,15 @@ pub fn builtin_agents() -> Vec<AgentDefinition> {
             system_prompt: DIGITAL_LIFE_AGENT_PROMPT,
             tool_names: &[
                 "digital_file_manager",
-                "digital_photo_album_search",
-                "digital_photo_metadata",
-                "digital_media_control",
-                "digital_security_event_query",
-                "digital_security_person_history",
-                "digital_security_identity_history",
-                "digital_security_current_subject",
-                "digital_pdf_document",
-                "digital_word_document",
-                "digital_ppt_generation",
-                "digital_spreadsheet",
-                "digital_ocr",
-                "digital_structured_extract",
-                "digital_text_assistant",
+                "digital_document_assistant",
                 "digital_note_knowledge",
+                "digital_security_event_query",
+                "digital_security_identity_recognition",
+                "digital_security_camera_control",
+                "digital_photo_album",
+                "digital_photo_metadata",
+                "digital_media_subtitle",
+                "digital_media_control",
             ],
         },
     ]
@@ -195,21 +194,21 @@ mod tests {
         let agent = resolve_agent(Some("digital_life")).unwrap();
 
         assert!(agent.system_prompt.contains("个人数字生活专家 agent"));
-        assert!(agent.system_prompt.contains("digital_pdf_document"));
+        assert!(agent.system_prompt.contains("digital_document_assistant"));
+        assert!(agent
+            .system_prompt
+            .contains("digital_security_camera_control"));
         assert!(agent.tool_names().contains(&"digital_file_manager"));
-        assert!(agent.tool_names().contains(&"digital_photo_album_search"));
+        assert!(agent.tool_names().contains(&"digital_document_assistant"));
+        assert!(agent.tool_names().contains(&"digital_photo_album"));
         assert!(agent.tool_names().contains(&"digital_security_event_query"));
         assert!(agent
             .tool_names()
-            .contains(&"digital_security_person_history"));
+            .contains(&"digital_security_identity_recognition"));
         assert!(agent
             .tool_names()
-            .contains(&"digital_security_identity_history"));
-        assert!(agent
-            .tool_names()
-            .contains(&"digital_security_current_subject"));
-        assert!(agent.tool_names().contains(&"digital_pdf_document"));
-        assert!(agent.tool_names().contains(&"digital_structured_extract"));
+            .contains(&"digital_security_camera_control"));
+        assert!(agent.tool_names().contains(&"digital_media_subtitle"));
         assert!(!agent.tool_names().contains(&"digital_invoice_extract"));
         assert!(!agent.tool_names().contains(&"digital_contract_extract"));
         assert!(!agent.tool_names().contains(&"digital_receipt_extract"));

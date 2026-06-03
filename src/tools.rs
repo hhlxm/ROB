@@ -7,7 +7,6 @@ use tokio::process::Command;
 use tokio::time::{timeout, Duration};
 
 const MAX_OUTPUT_BYTES: usize = 16 * 1024;
-const TOOL_TITLE_FIELD: &str = "tool_title";
 const HOME_FLOORS: &[&str] = &[
     "一楼",
     "二楼",
@@ -394,18 +393,34 @@ pub fn tool_specs() -> Vec<ToolSpec> {
         ),
         tool(
             "digital_file_manager",
-            "Inspect a known file path or directly list/count one directory. Use for file attributes, file size, directory contents, and immediate file counts.",
+            "Submit a normalized file-management request. Use for single-file properties, listing a directory, moving/copying one file, adding/removing/listing file tags, and renaming one file.",
             json!({
                 "type": "object",
                 "properties": {
                     "action": {
                         "type": "string",
-                        "enum": ["get_properties", "list_directory", "count_directory"],
-                        "description": "查看文件/目录属性用 get_properties；查看目录里有什么用 list_directory；统计桌面/下载目录有几个文件用 count_directory。"
+                        "enum": ["get_properties", "list_directory", "count_directory", "move_file", "copy_file", "add_tag", "remove_tag", "list_tags", "rename_file"],
+                        "description": "查询单文件属性=get_properties；列出指定目录=list_directory；统计目录=count_directory；单文件移动=move_file；单文件复制=copy_file；为单文件添加标签=add_tag；为单文件删除标签=remove_tag；查询文件标签=list_tags；单文件改名=rename_file。"
                     },
                     "path": {
                         "type": "string",
-                        "description": "用户给出的文件或目录路径。可以是绝对路径、相对路径或 ~/ 开头路径；必须保留用户原文目标。"
+                        "description": "用户给出的文件或目录路径。get_properties/list_directory/count_directory/add_tag/remove_tag/list_tags/rename_file 使用；必须保留用户原文目标。"
+                    },
+                    "source_path": {
+                        "type": "string",
+                        "description": "移动或复制的源文件路径，例如 /A/x.pdf。move_file/copy_file 必填。"
+                    },
+                    "target_path": {
+                        "type": "string",
+                        "description": "移动或复制的目标目录或目标路径，例如 /Archive/。move_file/copy_file 必填。"
+                    },
+                    "tag_name": {
+                        "type": "string",
+                        "description": "文件标签名，例如 #合同、重要、#项目X。add_tag/remove_tag 必填，保留用户原文。"
+                    },
+                    "new_name": {
+                        "type": "string",
+                        "description": "重命名后的新文件名，例如 final.pdf。rename_file 必填。"
                     },
                     "include_hidden": {
                         "type": "boolean",
@@ -418,7 +433,7 @@ pub fn tool_specs() -> Vec<ToolSpec> {
                         "description": "list_directory 最多返回多少项，默认 50。"
                     }
                 },
-                "required": ["action", "path"],
+                "required": ["action"],
                 "additionalProperties": false
             }),
         ),
@@ -463,19 +478,126 @@ pub fn tool_specs() -> Vec<ToolSpec> {
             }),
         ),
         tool(
-            "digital_media_control",
-            "Submit a normalized media playback command. Use for playing a title, pause/resume, episode navigation, switching audio/subtitle, casting, and progress lookup.",
+            "digital_document_assistant",
+            "Submit a normalized document-assistant request. Use for short-text summaries, document metadata questions, short translations, OCR from one image, writing assistance, and structured field extraction from one file.",
             json!({
                 "type": "object",
                 "properties": {
                     "action": {
                         "type": "string",
-                        "enum": ["play_title", "resume_last", "pause", "resume", "next_episode", "previous_episode", "jump_episode", "switch_audio", "switch_subtitle", "cast_to_device", "get_progress"],
-                        "description": "播放片名=play_title；继续看上次那部=resume_last；暂停=pause；继续播放=resume；下一集/上一集/跳到第几集；切换音轨/字幕；投屏；看到第几集。"
+                        "enum": ["summarize_text", "query_metadata", "translate_text", "ocr_extract_text", "rewrite_text", "expand_text", "compress_text", "structured_extract_fields"],
+                        "description": "短文摘要=summarize_text；文档元信息查询=query_metadata；短句/段落翻译=translate_text；单张图片 OCR=ocr_extract_text；润色/改写=rewrite_text；扩写=expand_text；压缩=compress_text；发票/合同/票据字段提取=structured_extract_fields。"
+                    },
+                    "text": {
+                        "type": "string",
+                        "description": "短文本、句子、段落、标题或待写作辅助内容。summarize_text/translate_text/rewrite_text/expand_text/compress_text 使用。"
+                    },
+                    "input_path": {
+                        "type": "string",
+                        "description": "文档、图片、发票、合同、票据或扫描件路径，例如 /Docs/a.pdf、/Photos/invoice.jpg、/Contracts/c.pdf。"
+                    },
+                    "document_type": {
+                        "type": "string",
+                        "enum": ["pdf", "word", "image", "invoice", "receipt", "contract", "order", "text", "unknown"],
+                        "description": "文档类型。PDF=pdf；Word/docx=word；图片/OCR=image；发票=invoice；小票/票据=receipt；合同=contract；订单=order；无法判断=unknown。"
+                    },
+                    "question": {
+                        "type": "string",
+                        "description": "文档元信息问题，例如“多少页”“标题是什么”“作者是谁”“出版日期”。"
+                    },
+                    "source_language": {
+                        "type": "string",
+                        "description": "源语言；用户未说明可省略。"
+                    },
+                    "target_language": {
+                        "type": "string",
+                        "description": "目标语种，例如“英文”“中文”“日文”“韩文”“西班牙语”“繁体”。translate_text 必填。"
+                    },
+                    "style": {
+                        "type": "string",
+                        "description": "写作风格，例如“正式”“简洁”“口语化”“商务”“生动”“邮件风格”。rewrite_text/expand_text 可填写。"
+                    },
+                    "target_length": {
+                        "type": "string",
+                        "description": "目标长度，例如“200字”“500字”。expand_text/compress_text 可填写。"
+                    },
+                    "fields": {
+                        "type": "array",
+                        "items": { "type": "string" },
+                        "description": "结构化提取字段，必须保留用户原文，例如“金额”“日期”“甲乙方”“商户”“总金额”。"
+                    },
+                    "output_path": {
+                        "type": "string",
+                        "description": "OCR 或转换后的输出路径；用户未指定可省略。"
+                    },
+                    "language_hint": {
+                        "type": "string",
+                        "description": "OCR 语言提示，例如“中文”“英文”。"
+                    }
+                },
+                "required": ["action"],
+                "additionalProperties": false
+            }),
+        ),
+        tool(
+            "digital_media_control",
+            "Submit a normalized video or music playback command. Use for recommended playback, title/condition playback, playlists, favorites, recent playback, pause/resume, episode switching, and track switching.",
+            json!({
+                "type": "object",
+                "properties": {
+                    "action": {
+                        "type": "string",
+                        "enum": ["play_recommended_video", "play_video_title", "play_video_by_director", "play_video_by_actor", "play_video_by_decade", "play_video_by_genre", "play_video_by_language_region", "play_video_combined", "play_video_playlist", "resume_video", "play_video_favorites", "play_title", "resume_last", "pause", "resume", "next_episode", "previous_episode", "jump_episode", "switch_audio", "switch_subtitle", "cast_to_device", "get_progress", "play_recommended_music", "play_music", "play_music_by_artist", "play_music_by_decade", "play_music_by_genre", "play_music_by_language", "play_music_combined", "play_music_playlist", "resume_music", "play_music_favorites", "next_track", "previous_track", "repeat_track"],
+                        "description": "影视推荐=play_recommended_video；按标题点播=play_video_title；按导演/演员/年代/类型/语言地区/多槽位/片单点播用对应 play_video_*；继续观看=resume_video；影视收藏=play_video_favorites；音乐推荐=play_recommended_music；按歌名/歌手/歌单点播用 play_music 或 play_music_*；音乐最近播放=resume_music；音乐收藏=play_music_favorites；下一首/上一首/再听一遍用 next_track/previous_track/repeat_track。兼容旧动作 play_title/resume_last。"
+                    },
+                    "media_type": {
+                        "type": "string",
+                        "enum": ["video", "music"],
+                        "description": "影视填 video，音乐填 music。"
                     },
                     "title": {
                         "type": "string",
-                        "description": "影片、剧集、节目名称，例如“狂飙”。用户原话出现时必须原样填写。"
+                        "description": "影视标题、节目名、影片名或通用标题，例如“《狂飙》”“《沙丘》”。用户原话出现时必须原样填写。"
+                    },
+                    "song_name": {
+                        "type": "string",
+                        "description": "歌曲名，例如“孤勇者”“青花瓷”“晴天”。"
+                    },
+                    "artist": {
+                        "type": "string",
+                        "description": "歌手或乐队，例如“周杰伦”“王菲”“BLACKPINK”。"
+                    },
+                    "album_name": {
+                        "type": "string",
+                        "description": "音乐专辑名，例如“七里香”。"
+                    },
+                    "playlist_name": {
+                        "type": "string",
+                        "description": "片单或歌单名称，例如“我的片单”“想看”“通勤”“睡前轻音乐”。"
+                    },
+                    "director": {
+                        "type": "string",
+                        "description": "导演名，例如“诺兰”“姜文”“宫崎骏”。"
+                    },
+                    "actor": {
+                        "type": "string",
+                        "description": "演员名，例如“周星驰”“梁朝伟”“汤姆·克鲁斯”。"
+                    },
+                    "decade": {
+                        "type": "string",
+                        "description": "年代，例如“80年代”“90年代”“2000年代”“2010年代”“最近”“经典老片”。"
+                    },
+                    "genre": {
+                        "type": "string",
+                        "description": "影视类型或音乐类型，例如“动作”“喜剧”“科幻”“流行”“摇滚”“古典”。"
+                    },
+                    "language": {
+                        "type": "string",
+                        "description": "语言，例如“国语”“粤语”“英语”“日语”“韩语”“纯音乐”。"
+                    },
+                    "region": {
+                        "type": "string",
+                        "description": "地区或剧种，例如“韩剧”“美剧”“港片”“日剧”“泰剧”“印度片”。"
                     },
                     "episode_number": {
                         "type": "integer",
@@ -493,9 +615,41 @@ pub fn tool_specs() -> Vec<ToolSpec> {
                     "target_device": {
                         "type": "string",
                         "description": "投屏目标设备，例如“客厅电视”。"
+                    },
+                    "query": {
+                        "type": "string",
+                        "description": "推荐、泛意图或组合条件的原始查询，必要时保留用户原文。"
                     }
                 },
                 "required": ["action"],
+                "additionalProperties": false
+            }),
+        ),
+        tool(
+            "digital_media_subtitle",
+            "Submit a normalized media-subtitle request. Use for read-only subtitle candidate search or downloading and mounting a selected subtitle version for a title.",
+            json!({
+                "type": "object",
+                "properties": {
+                    "action": {
+                        "type": "string",
+                        "enum": ["search_subtitles", "download_mount_subtitle"],
+                        "description": "搜索字幕候选=search_subtitles；下载并挂载字幕=download_mount_subtitle。"
+                    },
+                    "title": {
+                        "type": "string",
+                        "description": "影片标题，例如“《狂飙》”“《沙丘》”“《让子弹飞》”。必须保留用户原文。"
+                    },
+                    "subtitle_version": {
+                        "type": "string",
+                        "description": "字幕版本或语言，例如“简中”“中文”“双语”“英文”“英字幕”。download_mount_subtitle 必填。"
+                    },
+                    "language": {
+                        "type": "string",
+                        "description": "字幕语言；可从 subtitle_version 中提取，例如中文、英文、双语。"
+                    }
+                },
+                "required": ["action", "title"],
                 "additionalProperties": false
             }),
         ),
@@ -647,6 +801,43 @@ pub fn tool_specs() -> Vec<ToolSpec> {
             }),
         ),
         tool(
+            "digital_photo_album",
+            "Submit a normalized photo-album request. Use for album list filters, person albums, object/scene albums, and creating a new album.",
+            json!({
+                "type": "object",
+                "properties": {
+                    "action": {
+                        "type": "string",
+                        "enum": ["list_albums", "search_person_album", "search_object_album", "create_album"],
+                        "description": "查询相册列表=list_albums；查询人物相册=search_person_album；查询物体/场景相册=search_object_album；建立相册=create_album。"
+                    },
+                    "album_filter": {
+                        "type": "string",
+                        "description": "相册类型或筛选，例如“全部”“我创建的”“分享出去的”“隐藏的”“人物相册”“识物相册”“按更新时间”“按名称”“普通相册”“条件相册”“宝宝相册”。"
+                    },
+                    "person_name": {
+                        "type": "string",
+                        "description": "人物名，例如“宝宝”“妈妈”“爸爸”“老婆”“张三”“儿子”“女儿”“爷爷”“奶奶”“老公”“毛毛”。"
+                    },
+                    "object_name": {
+                        "type": "string",
+                        "description": "物体或场景名，例如“猫”“美食”“风景”“汽车”“花”“宠物”“海边”“夜景”“建筑”“日落”“宝宝照”。"
+                    },
+                    "album_name": {
+                        "type": "string",
+                        "description": "新建相册名称，例如“旅行”“宝宝成长”“工作”“2025春节”“年度精选”。"
+                    },
+                    "sort_by": {
+                        "type": "string",
+                        "enum": ["更新时间", "名称"],
+                        "description": "列表排序方式；用户说按更新时间或按名称时填写。"
+                    }
+                },
+                "required": ["action"],
+                "additionalProperties": false
+            }),
+        ),
+        tool(
             "digital_photo_album_search",
             "Submit a normalized album-library query. Use for listing albums, listing shared albums, finding an existing album by name, or locating which album contains a natural-language photo target.",
             json!({
@@ -672,14 +863,14 @@ pub fn tool_specs() -> Vec<ToolSpec> {
         ),
         tool(
             "digital_photo_metadata",
-            "Submit a normalized single-photo metadata query. Use for capture time, location, camera, EXIF, or full shooting information of one known photo.",
+            "Submit a normalized single-photo metadata query. Use for capture time, location, camera, EXIF, or full metadata of one known photo path or photo ID.",
             json!({
                 "type": "object",
                 "properties": {
                     "action": {
                         "type": "string",
-                        "enum": ["get_capture_time", "get_location", "get_shooting_info"],
-                        "description": "什么时候拍的=get_capture_time；在哪拍的=get_location；拍摄信息/EXIF=get_shooting_info。"
+                        "enum": ["get_photo_metadata", "get_capture_time", "get_location", "get_shooting_info"],
+                        "description": "查询单张照片元信息=get_photo_metadata；什么时候拍的=get_capture_time；在哪拍的=get_location；拍摄信息/EXIF=get_shooting_info。"
                     },
                     "photo_id": {
                         "type": "string",
@@ -704,49 +895,150 @@ pub fn tool_specs() -> Vec<ToolSpec> {
         ),
         tool(
             "digital_security_event_query",
-            "Submit a normalized security event query. Use for checking whether a camera, an area, or the whole home saw a person, motion, vehicle, package, or entry event in a time window. If the user mentions a place such as 门口、院子、客厅、宝宝房间、阳台, copy it exactly into area; do not put the place only in tool_title.",
+            "Submit a normalized security event query. Use for person presence, human behavior, typed-person presence, vehicle entry/presence, license plate presence, package status, pet activity/presence/behavior, wild animals, smoke/fire, glass breaking, cough, and crying events. Always preserve the user's time and camera/area slots.",
             json!({
                 "type": "object",
                 "properties": {
+                    "action": {
+                        "type": "string",
+                        "enum": ["person_presence", "human_behavior", "person_type_presence", "vehicle_entry", "vehicle_presence", "plate_presence", "package_query", "package_status", "pet_activity", "pet_presence", "pet_behavior", "wild_animal_detection", "smoke_fire_detection", "glass_break_detection", "cough_detection", "crying_detection"],
+                        "description": "人员存在查询=person_presence；人行为检测=human_behavior；不同类型人存在检测=person_type_presence；车辆出入查询=vehicle_entry；车辆存在检测=vehicle_presence；车牌存在检测=plate_presence；包裹/快递查询=package_query；包裹状态检测=package_status；宠物活动查询=pet_activity；宠物存在检测=pet_presence；宠物行为检测=pet_behavior；野生动物检测=wild_animal_detection；烟火检测=smoke_fire_detection；玻璃破碎检测=glass_break_detection；咳嗽声检测=cough_detection；哭声检测=crying_detection。"
+                    },
                     "area": {
                         "type": "string",
-                        "description": "用户原文提到的区域或房间，例如“门口”“院子”“客厅”“宝宝房间”“阳台”。只要用户说了区域就必须填写，并逐字保留；不要只写在 tool_title。用户没有提到区域时省略，表示全局/默认安防范围。"
+                        "description": "用户原文提到的区域或房间，例如“门口”“客厅”“院子”“阳台”“后院”“泳池”“顶楼花园”。没有具体镜头但全局查询时填“全屋”。"
                     },
                     "camera_name": {
                         "type": "string",
-                        "description": "用户原文明确提到的摄像头名称。没有摄像头名但有区域时填 area；用户都没有提到时省略，表示全局/默认安防范围。"
+                        "description": "用户原文明确提到的镜头/摄像头名称，例如“门口”“车库”“儿童房”。如果用户说的是镜头名，优先填 camera_name；也可同步填 area。"
                     },
                     "time_query": {
                         "type": "string",
-                        "description": "时间窗口原文，例如“刚刚”“刚才”“今天”“下午”“今晚”。未说明但语义是当前状态时填“当前”。"
+                        "description": "时间窗口原文，例如“现在”“刚才”“今天”“昨天”“昨晚”“今早”“上午”“下午”“晚上”“最近半小时”“最近一周”。未说明但语义是当前状态时填“现在”。"
                     },
                     "event_type": {
                         "type": "string",
-                        "enum": ["person", "motion", "vehicle", "package", "entry", "unknown"],
-                        "description": "有人=person；动静=motion；车进出=vehicle；快递=package；进门/回来=entry；不明确填 unknown。"
+                        "enum": ["person", "behavior", "vehicle", "plate", "package", "pet", "wild_animal", "smoke_fire", "sound", "unknown"],
+                        "description": "兼容粗分类槽位。人员=person；行为=behavior；车辆=vehicle；车牌=plate；包裹=package；宠物=pet；野生动物=wild_animal；烟火=smoke_fire；声音=sound；不明确=unknown。"
+                    },
+                    "behavior_type": {
+                        "type": "string",
+                        "description": "人行为类型，例如“徘徊”“跌倒”“翻越”“入水”“摔跤”。"
+                    },
+                    "person_type": {
+                        "type": "string",
+                        "description": "人物类型，例如“陌生人”“熟人”“张三”“爸爸”“妈妈”“爷爷”“奶奶”“小孩”“中年人”“老年人”。"
+                    },
+                    "person_label": {
+                        "type": "string",
+                        "description": "声音或事件关联的具体人物标签，例如“爸爸”“妈妈”“张三”“爷爷”“奶奶”。"
+                    },
+                    "vehicle_color": {
+                        "type": "string",
+                        "description": "车辆颜色，例如“白色”“黑色”“红色”“蓝色”“灰色”“银色”。"
+                    },
+                    "vehicle_type": {
+                        "type": "string",
+                        "description": "车型，例如“两轮车”“四轮车”“SUV”“轿车”“电动车”“摩托车”。"
+                    },
+                    "plate_prefix": {
+                        "type": "string",
+                        "description": "车牌前缀，例如“粤B”“京A”“沪C”“浙D”“苏E”。"
+                    },
+                    "plate_number": {
+                        "type": "string",
+                        "description": "完整车牌号，例如“京A12345”“粤B6789”“沪C9527”。"
+                    },
+                    "package_status": {
+                        "type": "string",
+                        "description": "包裹状态，例如“存在”“丢失”“送达”“被取走”。"
+                    },
+                    "pet": {
+                        "type": "string",
+                        "description": "宠物，例如“猫”“狗”“毛毛”“小狗”“小猫”“宠物”。"
+                    },
+                    "pet_behavior": {
+                        "type": "string",
+                        "description": "宠物行为，例如“翻越”“入水”“打架”“跌倒”“跑出”。"
+                    },
+                    "wild_animal": {
+                        "type": "string",
+                        "description": "野生动物，例如“野生动物”“野兽”“蛇”“老鼠”“野猫”“刺猬”。"
+                    },
+                    "smoke_fire_status": {
+                        "type": "string",
+                        "description": "烟火状态，例如“着火”“冒烟”“烟雾”“火苗”“起火”。"
+                    },
+                    "sound_type": {
+                        "type": "string",
+                        "description": "声音类型，例如“玻璃破碎”“摔东西”“打碎声”“咳嗽”“咳”“呛声”“宝宝哭”“小孩哭”“哭声”。"
                     }
                 },
-                "required": ["time_query", "event_type"],
+                "required": ["action", "time_query"],
+                "additionalProperties": false
+            }),
+        ),
+        tool(
+            "digital_security_camera_control",
+            "Submit a normalized security-camera control command. Use for privacy mode, snapshots, camera volume, intercom calls, and arming/disarming.",
+            json!({
+                "type": "object",
+                "properties": {
+                    "action": {
+                        "type": "string",
+                        "enum": ["enable_privacy_mode", "disable_privacy_mode", "snapshot", "increase_volume", "decrease_volume", "mute", "set_volume", "start_intercom", "arm", "disarm", "set_arm_mode"],
+                        "description": "开启隐私模式=enable_privacy_mode；关闭隐私模式=disable_privacy_mode；拍照/抓拍=snapshot；调大/调小/静音/设置摄像头音量用 increase_volume/decrease_volume/mute/set_volume；摄像头对讲=start_intercom；布防=arm；撤防=disarm；离家布防/在家模式=set_arm_mode。"
+                    },
+                    "camera_name": {
+                        "type": "string",
+                        "description": "指定镜头，例如“门口”“客厅”“院子”“阳台”“儿童房”“顶楼花园”。"
+                    },
+                    "scope": {
+                        "type": "string",
+                        "description": "控制范围，例如“全部”“一楼所有”“全屋”“指定房间”“除门口外”。"
+                    },
+                    "volume_operation": {
+                        "type": "string",
+                        "enum": ["调大", "调小", "静音", "设置"],
+                        "description": "摄像头音量操作原文归一化。"
+                    },
+                    "volume_percent": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 100,
+                        "description": "目标音量百分比，例如 50% 填 50，静音填 0。"
+                    },
+                    "mode": {
+                        "type": "string",
+                        "description": "布防模式，例如“开启布防”“一键布防”“撤防”“关闭布防”“离家布防”“在家模式”。"
+                    }
+                },
+                "required": ["action"],
                 "additionalProperties": false
             }),
         ),
         tool(
             "digital_security_identity_recognition",
-            "Submit a normalized security identity-recognition query. Use for known face labels, strangers, familiar people, couriers, or identifying the current subject near a camera.",
+            "Submit a normalized security identity-recognition query. Use for checking whether a known person or a stranger appeared in a time window.",
             json!({
                 "type": "object",
                 "properties": {
+                    "action": {
+                        "type": "string",
+                        "enum": ["known_person_appeared", "stranger_appeared"],
+                        "description": "熟人/已知人物是否出现=known_person_appeared；陌生人是否出现=stranger_appeared。"
+                    },
                     "area": {
                         "type": "string",
-                        "description": "用户提到的区域或房间，例如“门口”“客厅”。area 和 camera_name 至少填写一个。"
+                        "description": "用户提到的区域或房间，例如“门口”“客厅”“院子”“全屋”。"
                     },
                     "camera_name": {
                         "type": "string",
-                        "description": "明确的摄像头名称。area 和 camera_name 至少填写一个。"
+                        "description": "明确的镜头名称，例如“门口”“走廊”“车库”。"
                     },
                     "time_query": {
                         "type": "string",
-                        "description": "时间窗口原文，例如“刚刚”“今天”“刚才”。未说明但语义是当前画面时填“当前”。"
+                        "description": "时间窗口原文，例如“现在”“今天”“本周”“夜里”“放学时间”。未说明但语义是当前画面时填“现在”。"
                     },
                     "person_label": {
                         "type": "string",
@@ -754,11 +1046,11 @@ pub fn tool_specs() -> Vec<ToolSpec> {
                     },
                     "identity_query": {
                         "type": "string",
-                        "enum": ["known_person", "stranger", "familiar", "courier", "current_subject"],
-                        "description": "熟人/已知人=known_person 或 familiar；陌生人=stranger；送快递的=courier；门口那个是谁=current_subject。"
+                        "enum": ["known_person", "stranger"],
+                        "description": "熟人/已知人=known_person；陌生人=stranger。"
                     }
                 },
-                "required": ["time_query"],
+                "required": ["action", "time_query"],
                 "additionalProperties": false
             }),
         ),
@@ -1027,7 +1319,7 @@ pub fn tool_specs() -> Vec<ToolSpec> {
         ),
         tool(
             "digital_note_knowledge",
-            "Submit a normalized note/knowledge-base operation. Use for tagging notes, linking notes, creating topics, keyword search, and simple note QA.",
+            "Submit a normalized note/knowledge-base operation. Use for tagging one note, linking two notes, keyword search, and simple note QA.",
             json!({
                 "type": "object",
                 "properties": {
@@ -1036,18 +1328,34 @@ pub fn tool_specs() -> Vec<ToolSpec> {
                         "enum": ["tag_note", "link_notes", "create_topic", "search_notes", "question_notes"],
                         "description": "笔记标主题=tag_note；关联两条笔记=link_notes；新建主题=create_topic；找关键词=search_notes；有没有写过/问答=question_notes。"
                     },
+                    "note_path": {
+                        "type": "string",
+                        "description": "单条笔记路径，例如 /Notes/a.md。tag_note 使用。"
+                    },
+                    "note_a_path": {
+                        "type": "string",
+                        "description": "建立关联的第一条笔记路径，例如 /Notes/a.md。"
+                    },
+                    "note_b_path": {
+                        "type": "string",
+                        "description": "建立关联的第二条笔记路径，例如 /Notes/b.md。"
+                    },
                     "note_id": {
                         "type": "string",
-                        "description": "单条笔记 ID。"
+                        "description": "兼容旧上下文中的单条笔记 ID。"
                     },
                     "note_ids": {
                         "type": "array",
                         "items": { "type": "string" },
-                        "description": "需要关联的笔记 ID 列表。"
+                        "description": "兼容旧上下文中需要关联的笔记 ID 列表。"
                     },
                     "topic": {
                         "type": "string",
                         "description": "主题名，例如“K8s”。用户原话出现时必须原样填写。"
+                    },
+                    "keyword": {
+                        "type": "string",
+                        "description": "关键词，例如“K8s”“RAG”“项目X”“OAuth”“会议”“客户A”。search_notes 使用。"
                     },
                     "query": {
                         "type": "string",
@@ -1089,11 +1397,15 @@ pub async fn run_tool(name: &str, args: Value) -> Result<String> {
         | "smart_home_control_scene" => smart_home_command(name, args),
         "digital_file_manager" => digital_file_manager(args),
         "digital_photo_library"
+        | "digital_document_assistant"
         | "digital_photo_album_search"
+        | "digital_photo_album"
         | "digital_photo_metadata"
+        | "digital_media_subtitle"
         | "digital_media_control"
         | "digital_security_monitor"
         | "digital_security_event_query"
+        | "digital_security_camera_control"
         | "digital_security_identity_recognition"
         | "digital_security_person_history"
         | "digital_security_identity_history"
@@ -1117,7 +1429,7 @@ pub fn tool_context_prompt(specs: &[ToolSpec]) -> String {
 - Use only tools provided in the current `tools` request field.\n\
 - Tool arguments must strictly match each tool JSON schema; include every required field.\n\
 - Tool arguments must be one complete valid JSON object: close every `{` and `[`, quote every key and string, and do not output partial JSON.\n\
-- Every tool call must include `tool_title`, a short 4-12 word title in the same language as the user.\n\
+- Do not add display-only fields or fields not listed in the current tool schema.\n\
 - If the user mentions a floor, room, or device name/alias, copy it into the matching tool argument; do not omit or generalize it.\n\
 - Explicitly fill default numeric control values: speaker volume delta_percent=10, light brightness delta_percent=20, light color-temperature delta_kelvin=500, mute volume_percent=0.\n\
 - For power tools, outlets/plugs/wall outlets use device_category=outlet; wall switches and single/double/triple switches use device_category=wall_switch.\n\
@@ -1151,7 +1463,7 @@ fn tool(name: &str, description: &str, parameters: Value) -> ToolSpec {
         function: ToolFunctionSpec {
             name: name.to_string(),
             description: description.to_string(),
-            parameters: decorate_parameter_schema(parameters),
+            parameters,
         },
     }
 }
@@ -1165,35 +1477,6 @@ fn required_fields(parameters: &Value) -> Vec<String> {
         .filter_map(Value::as_str)
         .map(ToString::to_string)
         .collect()
-}
-
-fn decorate_parameter_schema(mut parameters: Value) -> Value {
-    let Some(object) = parameters.as_object_mut() else {
-        return parameters;
-    };
-
-    let properties = object.entry("properties").or_insert_with(|| json!({}));
-    if let Some(properties) = properties.as_object_mut() {
-        properties.insert(
-            TOOL_TITLE_FIELD.to_string(),
-            json!({
-                "type": "string",
-                "description": "A short 4-12 word title for this tool call, in the same language as the user."
-            }),
-        );
-    }
-
-    let required = object
-        .entry("required")
-        .or_insert_with(|| Value::Array(Vec::new()));
-    if let Some(required) = required.as_array_mut() {
-        let has_tool_title = required.iter().any(|value| value == TOOL_TITLE_FIELD);
-        if !has_tool_title {
-            required.insert(0, Value::String(TOOL_TITLE_FIELD.to_string()));
-        }
-    }
-
-    parameters
 }
 
 fn list_dir(args: Value) -> Result<String> {
@@ -1276,13 +1559,47 @@ fn smart_home_command(name: &str, mut args: Value) -> Result<String> {
 
 fn digital_file_manager(args: Value) -> Result<String> {
     let action = required_string_arg(&args, "action")?;
-    let raw_path = required_string_arg(&args, "path")?;
-    let path = expand_user_path(&raw_path);
 
     match action.as_str() {
-        "get_properties" => file_properties(&raw_path, &path),
-        "list_directory" => list_directory_details(&args, &raw_path, &path),
-        "count_directory" => count_directory_entries(&args, &raw_path, &path),
+        "get_properties" => {
+            let raw_path = required_string_arg(&args, "path")?;
+            let path = expand_user_path(&raw_path);
+            file_properties(&raw_path, &path)
+        }
+        "list_directory" => {
+            let raw_path = required_string_arg(&args, "path")?;
+            let path = expand_user_path(&raw_path);
+            list_directory_details(&args, &raw_path, &path)
+        }
+        "count_directory" => {
+            let raw_path = required_string_arg(&args, "path")?;
+            let path = expand_user_path(&raw_path);
+            count_directory_entries(&args, &raw_path, &path)
+        }
+        "move_file" => {
+            required_string_arg(&args, "source_path")?;
+            required_string_arg(&args, "target_path")?;
+            digital_life_mock_command("digital_file_manager", args)
+        }
+        "copy_file" => {
+            required_string_arg(&args, "source_path")?;
+            required_string_arg(&args, "target_path")?;
+            digital_life_mock_command("digital_file_manager", args)
+        }
+        "add_tag" | "remove_tag" => {
+            required_string_arg(&args, "path")?;
+            required_string_arg(&args, "tag_name")?;
+            digital_life_mock_command("digital_file_manager", args)
+        }
+        "list_tags" => {
+            required_string_arg(&args, "path")?;
+            digital_life_mock_command("digital_file_manager", args)
+        }
+        "rename_file" => {
+            required_string_arg(&args, "path")?;
+            required_string_arg(&args, "new_name")?;
+            digital_life_mock_command("digital_file_manager", args)
+        }
         _ => Err(anyhow!(
             "unsupported digital_file_manager action `{action}`"
         )),
@@ -1407,6 +1724,22 @@ fn digital_life_mock_command(name: &str, args: Value) -> Result<String> {
 
 fn validate_digital_life_args(name: &str, args: &Value) -> Result<()> {
     match name {
+        "digital_document_assistant" => validate_document_assistant_args(args),
+        "digital_photo_album" => match required_string_arg(args, "action")?.as_str() {
+            "search_person_album" => {
+                required_string_arg(args, "person_name")?;
+                Ok(())
+            }
+            "search_object_album" => {
+                required_string_arg(args, "object_name")?;
+                Ok(())
+            }
+            "create_album" => {
+                required_string_arg(args, "album_name")?;
+                Ok(())
+            }
+            _ => Ok(()),
+        },
         "digital_photo_album_search" => match required_string_arg(args, "action")?.as_str() {
             "search_album" => require_any_string(args, &["album_query"]),
             "find_photo_album" => require_any_string(args, &["photo_query"]),
@@ -1417,16 +1750,23 @@ fn validate_digital_life_args(name: &str, args: &Value) -> Result<()> {
             Ok(())
         }
         "digital_security_event_query" => {
+            required_string_arg(args, "action")?;
             required_string_arg(args, "time_query")?;
-            require_enum_arg(
-                args,
-                "event_type",
-                &["person", "motion", "vehicle", "package", "entry", "unknown"],
-            )?;
+            require_any_string(args, &["area", "camera_name"])?;
+            Ok(())
+        }
+        "digital_security_camera_control" => {
+            let action = required_string_arg(args, "action")?;
+            if matches!(
+                action.as_str(),
+                "increase_volume" | "decrease_volume" | "mute" | "set_volume"
+            ) {
+                require_any_string(args, &["camera_name", "scope"])?;
+            }
             Ok(())
         }
         "digital_security_identity_recognition" => {
-            require_any_string(args, &["area", "camera_name"])?;
+            required_string_arg(args, "action")?;
             required_string_arg(args, "time_query")?;
             require_any_string(args, &["person_label", "identity_query"])?;
             Ok(())
@@ -1474,8 +1814,70 @@ fn validate_digital_life_args(name: &str, args: &Value) -> Result<()> {
             require_nonempty_array(args, "fields")?;
             Ok(())
         }
+        "digital_media_subtitle" => {
+            let action = required_string_arg(args, "action")?;
+            required_string_arg(args, "title")?;
+            if action == "download_mount_subtitle" {
+                required_string_arg(args, "subtitle_version")?;
+            }
+            Ok(())
+        }
+        "digital_note_knowledge" => match required_string_arg(args, "action")?.as_str() {
+            "tag_note" => {
+                require_any_string(args, &["note_path", "note_id"])?;
+                required_string_arg(args, "topic")?;
+                Ok(())
+            }
+            "link_notes" => {
+                if args
+                    .get("note_ids")
+                    .and_then(Value::as_array)
+                    .map_or(0, Vec::len)
+                    >= 2
+                {
+                    return Ok(());
+                }
+                required_string_arg(args, "note_a_path")?;
+                required_string_arg(args, "note_b_path")?;
+                Ok(())
+            }
+            "search_notes" => {
+                require_any_string(args, &["keyword", "query"])?;
+                Ok(())
+            }
+            _ => Ok(()),
+        },
         _ => Ok(()),
     }
+}
+
+fn validate_document_assistant_args(args: &Value) -> Result<()> {
+    let action = required_string_arg(args, "action")?;
+    match action.as_str() {
+        "summarize_text" => {
+            required_string_arg(args, "text")?;
+        }
+        "query_metadata" => {
+            required_string_arg(args, "input_path")?;
+            required_string_arg(args, "question")?;
+        }
+        "translate_text" => {
+            required_string_arg(args, "text")?;
+            required_string_arg(args, "target_language")?;
+        }
+        "ocr_extract_text" => {
+            required_string_arg(args, "input_path")?;
+        }
+        "rewrite_text" | "expand_text" | "compress_text" => {
+            required_string_arg(args, "text")?;
+        }
+        "structured_extract_fields" => {
+            required_string_arg(args, "input_path")?;
+            require_nonempty_array(args, "fields")?;
+        }
+        _ => {}
+    }
+    Ok(())
 }
 
 fn validate_pdf_document_args(args: &Value) -> Result<()> {
@@ -1869,9 +2271,9 @@ mod tests {
             .unwrap();
         let required = shell.function.parameters["required"].as_array().unwrap();
 
-        assert!(required.iter().any(|value| value == "tool_title"));
         assert!(required.iter().any(|value| value == "command"));
         assert!(required.iter().any(|value| value == "args"));
+        assert!(!required.iter().any(|value| value == "tool_title"));
     }
 
     #[test]
@@ -1938,9 +2340,9 @@ mod tests {
         let prompt = tool_context_prompt(&tool_specs());
 
         assert!(prompt.contains("Tool arguments must strictly match"));
-        assert!(prompt.contains("tool_title"));
+        assert!(prompt.contains("Do not add display-only fields"));
         assert!(prompt.contains("`shell_exec`"));
-        assert!(prompt.contains("Required: tool_title, command, args"));
+        assert!(prompt.contains("Required: command, args"));
         assert!(prompt.contains(r#""command":"uname""#));
     }
 
@@ -2055,97 +2457,89 @@ mod tests {
     #[test]
     fn digital_life_schemas_expose_grouped_actions() {
         let specs = tool_specs();
-        let pdf = specs
+        let document = specs
             .iter()
-            .find(|spec| spec.function.name == "digital_pdf_document")
+            .find(|spec| spec.function.name == "digital_document_assistant")
             .unwrap();
-        let ocr = specs
+        let photo_album = specs
             .iter()
-            .find(|spec| spec.function.name == "digital_ocr")
+            .find(|spec| spec.function.name == "digital_photo_album")
             .unwrap();
         let security = specs
             .iter()
             .find(|spec| spec.function.name == "digital_security_event_query")
             .unwrap();
-        let person_history = specs
+        let camera_control = specs
             .iter()
-            .find(|spec| spec.function.name == "digital_security_person_history")
+            .find(|spec| spec.function.name == "digital_security_camera_control")
             .unwrap();
-        let identity_history = specs
+        let identity = specs
             .iter()
-            .find(|spec| spec.function.name == "digital_security_identity_history")
+            .find(|spec| spec.function.name == "digital_security_identity_recognition")
             .unwrap();
-        let current_subject = specs
+        let subtitle = specs
             .iter()
-            .find(|spec| spec.function.name == "digital_security_current_subject")
-            .unwrap();
-        let structured_extract = specs
-            .iter()
-            .find(|spec| spec.function.name == "digital_structured_extract")
+            .find(|spec| spec.function.name == "digital_media_subtitle")
             .unwrap();
         let media = specs
             .iter()
             .find(|spec| spec.function.name == "digital_media_control")
             .unwrap();
 
-        assert!(pdf.function.parameters["properties"]["action"]["enum"]
+        assert!(document.function.parameters["properties"]["action"]["enum"]
             .as_array()
             .unwrap()
             .iter()
-            .any(|value| value == "merge"));
-        assert!(ocr.function.parameters["properties"]["action"]["enum"]
+            .any(|value| value == "structured_extract_fields"));
+        assert!(document.function.parameters["properties"]["action"]["enum"]
             .as_array()
             .unwrap()
             .iter()
-            .any(|value| value == "extract_text"));
+            .any(|value| value == "ocr_extract_text"));
         assert!(
-            security.function.parameters["properties"]["event_type"]["enum"]
+            photo_album.function.parameters["properties"]["action"]["enum"]
                 .as_array()
                 .unwrap()
                 .iter()
-                .any(|value| value == "package")
+                .any(|value| value == "create_album")
         );
-        assert!(person_history.function.parameters["required"]
+        assert!(security.function.parameters["properties"]["action"]["enum"]
             .as_array()
             .unwrap()
             .iter()
-            .any(|value| value == "person_label"));
-        assert!(
-            identity_history.function.parameters["properties"]["identity_query"]["enum"]
-                .as_array()
-                .unwrap()
-                .iter()
-                .any(|value| value == "courier")
-        );
-        assert!(
-            current_subject.function.parameters["properties"]["subject_query"]["enum"]
-                .as_array()
-                .unwrap()
-                .iter()
-                .any(|value| value == "current_subject")
-        );
-        assert!(structured_extract.function.parameters["required"]
+            .any(|value| value == "smoke_fire_detection"));
+        assert!(security.function.parameters["properties"]["action"]["enum"]
             .as_array()
             .unwrap()
             .iter()
-            .any(|value| value == "fields"));
-        assert!(structured_extract.function.parameters["required"]
+            .any(|value| value == "plate_presence"));
+        assert!(security.function.parameters["required"]
             .as_array()
             .unwrap()
             .iter()
-            .any(|value| value == "document_type"));
+            .any(|value| value == "action"));
         assert!(
-            structured_extract.function.parameters["properties"]["document_type"]["enum"]
+            camera_control.function.parameters["properties"]["action"]["enum"]
                 .as_array()
                 .unwrap()
                 .iter()
-                .any(|value| value == "invoice")
+                .any(|value| value == "enable_privacy_mode")
         );
+        assert!(identity.function.parameters["properties"]["action"]["enum"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|value| value == "known_person_appeared"));
+        assert!(subtitle.function.parameters["properties"]["action"]["enum"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|value| value == "download_mount_subtitle"));
         assert!(media.function.parameters["properties"]["action"]["enum"]
             .as_array()
             .unwrap()
             .iter()
-            .any(|value| value == "cast_to_device"));
+            .any(|value| value == "play_music_playlist"));
     }
 
     #[tokio::test]
@@ -2153,7 +2547,6 @@ mod tests {
         let result = run_tool(
             "digital_file_manager",
             json!({
-                "tool_title": "查看目录属性",
                 "action": "get_properties",
                 "path": "."
             }),
@@ -2170,7 +2563,6 @@ mod tests {
         let result = run_tool(
             "digital_media_control",
             json!({
-                "tool_title": "投屏到客厅电视",
                 "action": "cast_to_device",
                 "target_device": "客厅电视"
             }),
@@ -2188,7 +2580,6 @@ mod tests {
         let missing_password = run_tool(
             "digital_pdf_document",
             json!({
-                "tool_title": "给 PDF 加密",
                 "action": "encrypt",
                 "input_paths": ["合同.pdf"]
             }),
@@ -2197,7 +2588,6 @@ mod tests {
         let valid_extract = run_tool(
             "digital_structured_extract",
             json!({
-                "tool_title": "提取发票金额日期",
                 "action": "extract_fields",
                 "input_path": "发票.png",
                 "document_type": "invoice",
@@ -2209,7 +2599,6 @@ mod tests {
         let invalid_subject = run_tool(
             "digital_security_current_subject",
             json!({
-                "tool_title": "识别刚才进门的是不是熟人",
                 "time_query": "刚才",
                 "subject_query": "是不是熟人"
             }),
@@ -2218,7 +2607,8 @@ mod tests {
         let valid_home_event = run_tool(
             "digital_security_event_query",
             json!({
-                "tool_title": "查询今晚是否有人来过",
+                "action": "person_presence",
+                "area": "全屋",
                 "time_query": "今晚",
                 "event_type": "person"
             }),
@@ -2228,9 +2618,8 @@ mod tests {
         let invalid_event = run_tool(
             "digital_security_event_query",
             json!({
-                "tool_title": "查询门口是否有声音",
                 "area": "门口",
-                "time_query": "当前",
+                "time_query": "现在",
                 "event_type": "sound"
             }),
         )
