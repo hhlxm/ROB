@@ -962,7 +962,7 @@ pub fn tool_specs() -> Vec<ToolSpec> {
         ),
         tool(
             "digital_structured_extract",
-            "Submit a normalized structured-field extraction request. Use for extracting invoice amount/date, contract parties, merchant names, or other named fields from one file.",
+            "Submit a normalized structured-field extraction request. Use for extracting invoice amount/date, contract parties, receipt merchant names, or other named fields from one file.",
             json!({
                 "type": "object",
                 "properties": {
@@ -975,90 +975,15 @@ pub fn tool_specs() -> Vec<ToolSpec> {
                     "document_type": {
                         "type": "string",
                         "enum": ["invoice", "receipt", "contract", "ticket", "image", "pdf", "unknown"],
-                        "description": "文档类型。"
+                        "description": "文档类型：发票=invoice；合同=contract；小票/票据=receipt；其他票券=ticket；无法判断=unknown。必须按用户原文目标填写。"
                     },
                     "fields": {
                         "type": "array",
                         "items": { "type": "string" },
-                        "description": "要提取的字段，例如金额、日期、甲方、乙方、商户。"
+                        "description": "要提取的字段，必须保留用户原文，例如“金额”“日期”“甲方”“乙方”“商户”。"
                     }
                 },
-                "required": ["action", "input_path", "fields"],
-                "additionalProperties": false
-            }),
-        ),
-        tool(
-            "digital_invoice_extract",
-            "Submit a normalized invoice field extraction request. Use for extracting fields such as invoice amount and date from one invoice file.",
-            json!({
-                "type": "object",
-                "properties": {
-                    "action": {
-                        "type": "string",
-                        "enum": ["extract_fields"],
-                        "description": "从发票提取指定字段。"
-                    },
-                    "input_path": {
-                        "type": "string",
-                        "description": "输入发票图片或 PDF 路径。"
-                    },
-                    "fields": {
-                        "type": "array",
-                        "items": { "type": "string" },
-                        "description": "要提取的字段，必须保留用户原文，例如“金额”“日期”。"
-                    }
-                },
-                "required": ["action", "input_path", "fields"],
-                "additionalProperties": false
-            }),
-        ),
-        tool(
-            "digital_contract_extract",
-            "Submit a normalized contract field extraction request. Use for extracting parties or other named fields from one contract file.",
-            json!({
-                "type": "object",
-                "properties": {
-                    "action": {
-                        "type": "string",
-                        "enum": ["extract_fields"],
-                        "description": "从合同提取指定字段。"
-                    },
-                    "input_path": {
-                        "type": "string",
-                        "description": "输入合同图片、PDF 或文档路径。"
-                    },
-                    "fields": {
-                        "type": "array",
-                        "items": { "type": "string" },
-                        "description": "要提取的字段，必须保留用户原文，例如“甲方”“乙方”。"
-                    }
-                },
-                "required": ["action", "input_path", "fields"],
-                "additionalProperties": false
-            }),
-        ),
-        tool(
-            "digital_receipt_extract",
-            "Submit a normalized receipt or ticket field extraction request. Use for extracting merchant names or other named fields from one receipt/ticket file.",
-            json!({
-                "type": "object",
-                "properties": {
-                    "action": {
-                        "type": "string",
-                        "enum": ["extract_fields"],
-                        "description": "从票据或小票提取指定字段。"
-                    },
-                    "input_path": {
-                        "type": "string",
-                        "description": "输入票据、小票、图片或 PDF 路径。"
-                    },
-                    "fields": {
-                        "type": "array",
-                        "items": { "type": "string" },
-                        "description": "要提取的字段，必须保留用户原文，例如“商户”。"
-                    }
-                },
-                "required": ["action", "input_path", "fields"],
+                "required": ["action", "input_path", "document_type", "fields"],
                 "additionalProperties": false
             }),
         ),
@@ -1180,9 +1105,6 @@ pub async fn run_tool(name: &str, args: Value) -> Result<String> {
         | "digital_spreadsheet"
         | "digital_ocr"
         | "digital_structured_extract"
-        | "digital_invoice_extract"
-        | "digital_contract_extract"
-        | "digital_receipt_extract"
         | "digital_text_assistant"
         | "digital_note_knowledge" => digital_life_mock_command(name, args),
         _ => Err(anyhow!("unknown tool `{name}`")),
@@ -1540,13 +1462,15 @@ fn validate_digital_life_args(name: &str, args: &Value) -> Result<()> {
             Ok(())
         }
         "digital_structured_extract" => {
+            require_enum_arg(args, "action", &["extract_fields"])?;
             required_string_arg(args, "input_path")?;
-            require_nonempty_array(args, "fields")?;
-            Ok(())
-        }
-        "digital_invoice_extract" | "digital_contract_extract" | "digital_receipt_extract" => {
-            required_string_arg(args, "action")?;
-            required_string_arg(args, "input_path")?;
+            require_enum_arg(
+                args,
+                "document_type",
+                &[
+                    "invoice", "receipt", "contract", "ticket", "image", "pdf", "unknown",
+                ],
+            )?;
             require_nonempty_array(args, "fields")?;
             Ok(())
         }
@@ -2155,9 +2079,9 @@ mod tests {
             .iter()
             .find(|spec| spec.function.name == "digital_security_current_subject")
             .unwrap();
-        let invoice_extract = specs
+        let structured_extract = specs
             .iter()
-            .find(|spec| spec.function.name == "digital_invoice_extract")
+            .find(|spec| spec.function.name == "digital_structured_extract")
             .unwrap();
         let media = specs
             .iter()
@@ -2200,11 +2124,23 @@ mod tests {
                 .iter()
                 .any(|value| value == "current_subject")
         );
-        assert!(invoice_extract.function.parameters["required"]
+        assert!(structured_extract.function.parameters["required"]
             .as_array()
             .unwrap()
             .iter()
             .any(|value| value == "fields"));
+        assert!(structured_extract.function.parameters["required"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|value| value == "document_type"));
+        assert!(
+            structured_extract.function.parameters["properties"]["document_type"]["enum"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|value| value == "invoice")
+        );
         assert!(media.function.parameters["properties"]["action"]["enum"]
             .as_array()
             .unwrap()
@@ -2259,11 +2195,12 @@ mod tests {
         )
         .await;
         let valid_extract = run_tool(
-            "digital_invoice_extract",
+            "digital_structured_extract",
             json!({
                 "tool_title": "提取发票金额日期",
                 "action": "extract_fields",
                 "input_path": "发票.png",
+                "document_type": "invoice",
                 "fields": ["金额", "日期"]
             }),
         )
@@ -2303,7 +2240,7 @@ mod tests {
         assert!(invalid_subject.is_err());
         assert!(invalid_event.is_err());
         assert!(valid_home_event.contains(r#""tool": "digital_security_event_query""#));
-        assert!(valid_extract.contains(r#""tool": "digital_invoice_extract""#));
+        assert!(valid_extract.contains(r#""tool": "digital_structured_extract""#));
         assert!(valid_extract.contains("金额"));
     }
 }
