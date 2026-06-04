@@ -655,24 +655,25 @@ pub fn tool_specs() -> Vec<ToolSpec> {
         ),
         tool(
             "digital_video_playback",
-            "Submit a normalized video playback request for explicit title, director, actor, decade, or multi-slot video conditions. Do not use this for generic recommendations, genre-only requests, region/language-only requests, playlists, resume, favorites, episode control, pause, or resume.",
+            "Submit a normalized video playback request. Use for video recommendations, title/director/actor/decade/genre/language-region playback, video playlists, recent video resume, favorites, and episode navigation.",
             json!({
                 "type": "object",
                 "properties": {
                     "action": {
                         "type": "string",
-                        "enum": ["play_video_title", "play_video_by_director", "play_video_by_actor", "play_video_by_decade", "play_video_combined"],
-                        "description": "按影视标题点播=play_video_title；按导演=play_video_by_director；按演员=play_video_by_actor；按年代=play_video_by_decade；导演/演员/年代/类型/地区等多槽位组合=play_video_combined。"
+                        "enum": ["play_recommended_video", "play_video_title", "play_video_by_director", "play_video_by_actor", "play_video_by_decade", "play_video_by_genre", "play_video_by_language_region", "play_video_combined", "play_video_playlist", "resume_video", "play_video_favorites", "next_episode", "previous_episode", "jump_episode"],
+                        "description": "影视泛推荐=play_recommended_video；按标题/导演/演员/年代/类型/语言地区/多槽位点播用对应 play_video_*；片单=play_video_playlist；最近播放=resume_video；收藏=play_video_favorites；下一集/上一集/跳集用 next_episode/previous_episode/jump_episode。"
                     },
                     "title": { "type": "string", "description": "影视标题，例如《狂飙》《沙丘》。" },
                     "director": { "type": "string", "description": "导演名，例如诺兰、姜文、宫崎骏。" },
                     "actor": { "type": "string", "description": "演员名，例如周星驰、梁朝伟。" },
                     "decade": { "type": "string", "description": "年代，例如80年代、90年代、最近、经典老片。" },
-                    "genre": { "type": "string", "description": "组合点播中的影视类型，例如喜剧、动作、科幻。" },
-                    "language": { "type": "string", "description": "组合点播中的语言，例如国语、粤语、英语。" },
-                    "region": { "type": "string", "description": "组合点播中的地区/剧种，例如美剧、韩剧、港片。" },
+                    "genre": { "type": "string", "description": "影视类型，例如喜剧、动作、科幻、悬疑、纪录片。" },
+                    "language": { "type": "string", "description": "影视语言，例如国语、粤语、英语、日语。" },
+                    "region": { "type": "string", "description": "影视地区/剧种，例如美剧、韩剧、港片、日剧。" },
+                    "playlist_name": { "type": "string", "description": "片单名称，例如我的片单、想看、周末家庭、经典回顾。" },
                     "episode_number": { "type": "integer", "minimum": 1, "description": "标题点播时带的集数。" },
-                    "query": { "type": "string", "description": "原始组合条件；必要时保留用户原文。" }
+                    "query": { "type": "string", "description": "用户原始影视请求。" }
                 },
                 "required": ["action"],
                 "additionalProperties": false
@@ -785,21 +786,22 @@ pub fn tool_specs() -> Vec<ToolSpec> {
         ),
         tool(
             "digital_music_playback",
-            "Submit a normalized music playback request for explicit song, artist, album, decade, or multi-slot music conditions. Do not use this for generic recommendations, genre-only requests, language-only requests, playlists, recent playback, favorites, or track navigation.",
+            "Submit a normalized music playback request. Use for music recommendations, song/artist/album/decade/genre/language playback, playlists, recent playback, favorites, and track navigation.",
             json!({
                 "type": "object",
                 "properties": {
                     "action": {
                         "type": "string",
-                        "enum": ["play_music", "play_music_by_artist", "play_music_by_decade", "play_music_combined"],
-                        "description": "按歌名/歌手/专辑点播=play_music；按歌手=play_music_by_artist；按年代=play_music_by_decade；歌手/歌曲/年代/语言/类型多槽位组合=play_music_combined。"
+                        "enum": ["play_recommended_music", "play_music", "play_music_by_artist", "play_music_by_decade", "play_music_by_genre", "play_music_by_language", "play_music_combined", "play_music_playlist", "resume_music", "play_music_favorites", "next_track", "previous_track", "repeat_track"],
+                        "description": "音乐泛推荐=play_recommended_music；按歌名/歌手/年代/类型/语言/多槽位点播用对应 play_music_*；歌单=play_music_playlist；最近播放=resume_music；收藏=play_music_favorites；下一首/上一首/再听一遍用 next_track/previous_track/repeat_track。"
                     },
                     "song_name": { "type": "string", "description": "歌曲名，例如青花瓷、孤勇者。" },
                     "artist": { "type": "string", "description": "歌手，例如周杰伦、王菲、BLACKPINK。" },
                     "album_name": { "type": "string", "description": "专辑名，例如七里香。" },
                     "decade": { "type": "string", "description": "年代，例如80年代、90年代、最近。" },
-                    "language": { "type": "string", "description": "组合点播中的语言，例如粤语、英语、纯音乐。" },
-                    "genre": { "type": "string", "description": "组合点播中的音乐类型，例如流行、摇滚、古典。" },
+                    "language": { "type": "string", "description": "音乐语言，例如粤语、英语、纯音乐。" },
+                    "genre": { "type": "string", "description": "音乐类型，例如流行、摇滚、古典。" },
+                    "playlist_name": { "type": "string", "description": "歌单名称，例如我的歌单、通勤、睡前、工作。" },
                     "query": { "type": "string", "description": "原始音乐点播请求。" }
                 },
                 "required": ["action"],
