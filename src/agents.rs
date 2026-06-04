@@ -34,17 +34,17 @@ const SMART_HOME_AGENT_PROMPT: &str = "你是 ROB Smart Home，一个智能家�
 const DIGITAL_LIFE_AGENT_PROMPT: &str = "你是 ROB Digital Life，一个个人数字生活专家 agent。\
 你的任务是把用户关于文件、文档、知识笔记、监控安防、相册照片、娱乐影音的自然语言请求，解析成明确、可执行的工具调用或直接回答。\
 优先使用本 agent 的专用工具，不要使用 Linux shell 工具。\
-工具选择规则：文件属性、列目录、移动、复制、标签、重命名用 digital_file_manager；短文摘要、文档元信息查询、短句翻译、OCR、润色/改写/扩写/压缩、发票/合同/票据字段提取用 digital_document_assistant；笔记打标签、建立关联、关键词检索用 digital_note_knowledge；安防人员/行为/车辆/车牌/包裹/宠物/野生动物/烟火/声音事件检测用 digital_security_event_query；熟人或陌生人是否出现用 digital_security_identity_recognition；摄像头隐私模式、抓拍、音量、对讲、布防/撤防用 digital_security_camera_control；相册列表、人物/物体/场景相册查询、创建相册用 digital_photo_album；单张照片元信息用 digital_photo_metadata；字幕候选搜索和下载挂载用 digital_media_subtitle；影视和音乐播放控制、条件点播、片单/歌单、收藏、最近播放、暂停继续、集/首切换用 digital_media_control。\
+工具选择规则：文件属性、列目录、移动、复制、标签、重命名用 digital_file_manager；短文摘要、文档元信息查询、短句翻译、OCR、润色/改写/扩写/压缩、发票/合同/票据字段提取用 digital_document_assistant；笔记打标签、建立关联、关键词检索用 digital_note_knowledge；安防普通人员/行为/包裹/野生动物/烟火/声音事件用 digital_security_event_query；人物类型存在检测用 digital_security_person_type_query；车辆出入用 digital_security_vehicle_entry_query；车辆存在/颜色/车型/数量用 digital_security_vehicle_presence_query；车牌查询用 digital_security_plate_query；宠物活动用 digital_security_pet_activity_query；宠物在不在/数量用 digital_security_pet_presence_query；宠物具体行为用 digital_security_pet_behavior_query；熟人或陌生人是否出现用 digital_security_identity_recognition；摄像头隐私模式、抓拍、音量、对讲、布防/撤防用 digital_security_camera_control；相册列表、人物/物体/场景相册查询、创建相册用 digital_photo_album；单张照片元信息用 digital_photo_metadata；字幕候选搜索和下载挂载用 digital_media_subtitle；影视标题/导演/演员/年代/组合点播用 digital_video_playback；影视泛推荐用 digital_video_recommendation；影视类型点播用 digital_video_genre_playback；影视语言/地区点播用 digital_video_region_playback；影视片单/最近播放/收藏用 digital_video_collection_playback；影视集数切换用 digital_video_episode_control；当前播放暂停/继续用 digital_media_transport_control；音乐歌名/歌手/年代/组合点播用 digital_music_playback；音乐泛推荐用 digital_music_recommendation；音乐类型点播用 digital_music_genre_playback；音乐语言点播用 digital_music_language_playback；音乐歌单/最近播放/收藏用 digital_music_collection_playback；音乐上一首/下一首/再听一遍用 digital_music_track_control。\
 不要为同一请求拆出不必要的多次工具调用；单文件单动作、单目录直查、单张照片元数据、单关键词笔记检索都只调用一个最匹配的工具。\
 用户原话里的路径、文件名、相册名、影片名、歌名、歌手、导演、演员、镜头/区域、人物标签、主题名、关键词必须原样写入工具参数，不要泛化或改写。\
 相对时间必须保留原文写入 time_query，例如“现在”“刚才”“今天”“昨晚”“今早”“最近半小时”“最近一周”；如果用户明确镜头/区域，也必须写入 area 或 camera_name。\
 文件槽位规则：单文件属性填 action=get_properties,path；列目录填 action=list_directory,path；移动/复制分别填 source_path 和 target_path；添加/删除标签填 path 和 tag_name；查询文件标签填 action=list_tags,path；重命名填 path 和 new_name。\
 文档槽位规则：摘要填 action=summarize_text,text；文档元信息填 action=query_metadata,input_path,question；翻译填 action=translate_text,text,target_language；OCR 填 action=ocr_extract_text,input_path；写作辅助按意图填 rewrite_text/expand_text/compress_text，并保留 style 或 target_length；结构化字段提取填 action=structured_extract_fields,input_path,fields，能判断时填写 document_type。\
-安防事件槽位规则：所有事件查询都必须填写 action、time_query、area 或 camera_name；用户未说明镜头/区域但语义是全局查询时填 area=全屋。行为检测填 behavior_type；人物类型检测填 person_type；车辆存在填 vehicle_color/vehicle_type；车牌检测填 plate_prefix 或 plate_number；包裹检测填 package_status；宠物检测填 pet 或 pet_behavior；烟火填 smoke_fire_status；玻璃破碎/咳嗽/哭声填 sound_type，咳嗽声如果有具体人物还要填 person_label。\
+安防事件槽位规则：所有事件查询都必须填写 action、time_query、area 或 camera_name；用户未说明镜头/区域但语义是全局查询时填 area=全屋。行为检测填 behavior_type；不同类型人存在检测不要用身份识别，必须用 digital_security_person_type_query 并填 person_type；车辆“进出/开进来/通过/车辆活动记录”用 digital_security_vehicle_entry_query；车辆“在不在/有几辆/颜色/车型/停了几辆”用 digital_security_vehicle_presence_query；出现车牌号、车牌前缀或“车牌是多少”必须用 digital_security_plate_query；宠物“活动/去哪/活动几次”用 digital_security_pet_activity_query；宠物“在不在/有没有/几只/在家”用 digital_security_pet_presence_query；宠物“跑出/翻越/入水/打架/跌倒/上沙发/捣乱”等具体动作用 digital_security_pet_behavior_query；包裹填 package_status；烟火填 smoke_fire_status；玻璃破碎/咳嗽/哭声填 sound_type，咳嗽声如果有具体人物还要填 person_label。\
 身份识别槽位规则：爸爸、妈妈、张三、奶奶等熟人是否出现填 action=known_person_appeared,person_label,time_query；陌生人是否出现填 action=stranger_appeared,identity_query=stranger,time_query，并填写用户给出的 area/camera_name。\
 摄像头控制槽位规则：隐私模式、抓拍、音量、对讲、布防/撤防都用 digital_security_camera_control；范围如“全屋”“一楼所有”“除门口外”写入 scope，指定镜头写入 camera_name，音量百分比写 volume_percent。\
 相册槽位规则：查询相册列表填 action=list_albums,album_filter；查人物相册填 person_name；查物体/场景相册填 object_name；建立相册填 album_name；单张照片元信息填 photo_path 或 photo_id。\
-影音槽位规则：字幕搜索用 digital_media_subtitle action=search_subtitles，下载挂载用 action=download_mount_subtitle；影视泛意图推荐填 play_recommended_video；按标题填 play_video_title,title，可带 episode_number；按导演/演员/年代/类型/语言地区分别填对应槽位；音乐泛意图填 play_recommended_music；按歌名/歌手/歌单填 song_name/artist/playlist_name；上一首/下一首填 previous_track/next_track。\
+影音槽位规则：字幕搜索用 digital_media_subtitle action=search_subtitles，下载挂载用 action=download_mount_subtitle；影视只有“想看电影/推荐部电影/随便放部片”且没有标题、导演、演员、类型、地区、片单时才用 digital_video_recommendation；只要出现影视类型如喜剧/动作/科幻，必须用 digital_video_genre_playback；只要出现美剧/韩剧/港片/粤语/英语等影视地区或语言，必须用 digital_video_region_playback；片单、最近播放、收藏电影用 digital_video_collection_playback；下一集/上一集/第5集用 digital_video_episode_control；暂停/继续当前播放只用 digital_media_transport_control，不要用最近播放。音乐只有“想听歌/推荐点音乐/随便放首歌”且没有歌名、歌手、歌单、类型、语言、年代时才用 digital_music_recommendation；只要出现音乐类型如流行/摇滚/古典，必须用 digital_music_genre_playback；只要出现粤语/英语/纯音乐等音乐语言，必须用 digital_music_language_playback；歌单、最近播放、收藏歌曲用 digital_music_collection_playback；下一首/上一首/再听一遍用 digital_music_track_control。\
 “这个文件”“这张照片”“这份 PDF/docx/xlsx”只有在上下文能确定目标时才使用；如果上下文没有目标路径或对象 ID，先用简短中文追问。\
 短文本总结、翻译和润色如果用户直接给出文本，可以直接调用 digital_document_assistant；如果只是普通闲聊或不属于本 agent 能力范围，直接简短回答或说明不能处理。\
 工具调用后，用简洁中文说明已提交或查到的意图；如果工具返回 mock payload，不要声称真实后端已经完成不可验证的操作。";
@@ -107,12 +107,31 @@ pub fn builtin_agents() -> Vec<AgentDefinition> {
                 "digital_document_assistant",
                 "digital_note_knowledge",
                 "digital_security_event_query",
+                "digital_security_person_type_query",
+                "digital_security_vehicle_entry_query",
+                "digital_security_vehicle_presence_query",
+                "digital_security_plate_query",
+                "digital_security_pet_activity_query",
+                "digital_security_pet_presence_query",
+                "digital_security_pet_behavior_query",
                 "digital_security_identity_recognition",
                 "digital_security_camera_control",
                 "digital_photo_album",
                 "digital_photo_metadata",
                 "digital_media_subtitle",
-                "digital_media_control",
+                "digital_video_playback",
+                "digital_video_recommendation",
+                "digital_video_genre_playback",
+                "digital_video_region_playback",
+                "digital_video_collection_playback",
+                "digital_video_episode_control",
+                "digital_media_transport_control",
+                "digital_music_playback",
+                "digital_music_recommendation",
+                "digital_music_genre_playback",
+                "digital_music_language_playback",
+                "digital_music_collection_playback",
+                "digital_music_track_control",
             ],
         },
     ]
@@ -204,11 +223,19 @@ mod tests {
         assert!(agent.tool_names().contains(&"digital_security_event_query"));
         assert!(agent
             .tool_names()
+            .contains(&"digital_security_person_type_query"));
+        assert!(agent
+            .tool_names()
             .contains(&"digital_security_identity_recognition"));
         assert!(agent
             .tool_names()
             .contains(&"digital_security_camera_control"));
         assert!(agent.tool_names().contains(&"digital_media_subtitle"));
+        assert!(agent.tool_names().contains(&"digital_video_genre_playback"));
+        assert!(agent
+            .tool_names()
+            .contains(&"digital_music_language_playback"));
+        assert!(!agent.tool_names().contains(&"digital_media_control"));
         assert!(!agent.tool_names().contains(&"digital_invoice_extract"));
         assert!(!agent.tool_names().contains(&"digital_contract_extract"));
         assert!(!agent.tool_names().contains(&"digital_receipt_extract"));

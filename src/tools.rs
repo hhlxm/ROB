@@ -654,6 +654,246 @@ pub fn tool_specs() -> Vec<ToolSpec> {
             }),
         ),
         tool(
+            "digital_video_playback",
+            "Submit a normalized video playback request for explicit title, director, actor, decade, or multi-slot video conditions. Do not use this for generic recommendations, genre-only requests, region/language-only requests, playlists, resume, favorites, episode control, pause, or resume.",
+            json!({
+                "type": "object",
+                "properties": {
+                    "action": {
+                        "type": "string",
+                        "enum": ["play_video_title", "play_video_by_director", "play_video_by_actor", "play_video_by_decade", "play_video_combined"],
+                        "description": "按影视标题点播=play_video_title；按导演=play_video_by_director；按演员=play_video_by_actor；按年代=play_video_by_decade；导演/演员/年代/类型/地区等多槽位组合=play_video_combined。"
+                    },
+                    "title": { "type": "string", "description": "影视标题，例如《狂飙》《沙丘》。" },
+                    "director": { "type": "string", "description": "导演名，例如诺兰、姜文、宫崎骏。" },
+                    "actor": { "type": "string", "description": "演员名，例如周星驰、梁朝伟。" },
+                    "decade": { "type": "string", "description": "年代，例如80年代、90年代、最近、经典老片。" },
+                    "genre": { "type": "string", "description": "组合点播中的影视类型，例如喜剧、动作、科幻。" },
+                    "language": { "type": "string", "description": "组合点播中的语言，例如国语、粤语、英语。" },
+                    "region": { "type": "string", "description": "组合点播中的地区/剧种，例如美剧、韩剧、港片。" },
+                    "episode_number": { "type": "integer", "minimum": 1, "description": "标题点播时带的集数。" },
+                    "query": { "type": "string", "description": "原始组合条件；必要时保留用户原文。" }
+                },
+                "required": ["action"],
+                "additionalProperties": false
+            }),
+        ),
+        tool(
+            "digital_video_recommendation",
+            "Submit a generic video recommendation request. Use only when the user has no concrete title, director, actor, genre, language/region, playlist, or collection slot and just wants any movie/show.",
+            json!({
+                "type": "object",
+                "properties": {
+                    "action": {
+                        "type": "string",
+                        "enum": ["play_recommended_video"],
+                        "description": "影视泛意图播放，例如想看电影、推荐部电影、随便放部片。"
+                    },
+                    "query": { "type": "string", "description": "用户原始泛意图。" }
+                },
+                "required": ["action"],
+                "additionalProperties": false
+            }),
+        ),
+        tool(
+            "digital_video_genre_playback",
+            "Submit a video playback request constrained by genre/type. Use whenever the user names a video genre such as 喜剧、动作、科幻、悬疑、恐怖、战争、纪录片、动画、武侠、剧情, even if the wording sounds like a recommendation.",
+            json!({
+                "type": "object",
+                "properties": {
+                    "action": {
+                        "type": "string",
+                        "enum": ["play_video_by_genre"],
+                        "description": "按影视类型/题材点播。带 genre 时不要使用 play_recommended_video。"
+                    },
+                    "genre": { "type": "string", "description": "影视类型，例如喜剧、动作、科幻。" },
+                    "query": { "type": "string", "description": "用户原始类型点播请求。" }
+                },
+                "required": ["action", "genre"],
+                "additionalProperties": false
+            }),
+        ),
+        tool(
+            "digital_video_region_playback",
+            "Submit a video playback request constrained by language or region. Use whenever the user names a video language/region such as 国语、粤语、英语、韩剧、美剧、港片、日剧、泰剧、印度片, even if the wording sounds like a recommendation.",
+            json!({
+                "type": "object",
+                "properties": {
+                    "action": {
+                        "type": "string",
+                        "enum": ["play_video_by_language_region"],
+                        "description": "按影视语言或地区点播。带 language/region 时不要使用 play_recommended_video。"
+                    },
+                    "language": { "type": "string", "description": "语言，例如国语、粤语、英语、日语。" },
+                    "region": { "type": "string", "description": "地区/剧种，例如美剧、韩剧、港片、日剧。" },
+                    "query": { "type": "string", "description": "用户原始语言/地区点播请求。" }
+                },
+                "required": ["action"],
+                "additionalProperties": false
+            }),
+        ),
+        tool(
+            "digital_video_collection_playback",
+            "Submit a video collection playback request. Use for video playlists, recent video resume, and video favorites.",
+            json!({
+                "type": "object",
+                "properties": {
+                    "action": {
+                        "type": "string",
+                        "enum": ["play_video_playlist", "resume_video", "play_video_favorites"],
+                        "description": "播放片单=play_video_playlist；继续观看/最近播放=resume_video；我的收藏/收藏夹电影=play_video_favorites。"
+                    },
+                    "playlist_name": { "type": "string", "description": "片单名称，例如我的片单、想看、周末家庭、经典回顾。" },
+                    "query": { "type": "string", "description": "用户原始片单、最近播放或收藏请求。" }
+                },
+                "required": ["action"],
+                "additionalProperties": false
+            }),
+        ),
+        tool(
+            "digital_video_episode_control",
+            "Submit a video episode navigation command. Use only for next episode, previous episode, or jumping to a specified episode.",
+            json!({
+                "type": "object",
+                "properties": {
+                    "action": {
+                        "type": "string",
+                        "enum": ["next_episode", "previous_episode", "jump_episode"],
+                        "description": "下一集=next_episode；上一集=previous_episode；跳到第几集=jump_episode。"
+                    },
+                    "episode_number": { "type": "integer", "minimum": 1, "description": "目标集数。第5集填 5。" }
+                },
+                "required": ["action"],
+                "additionalProperties": false
+            }),
+        ),
+        tool(
+            "digital_media_transport_control",
+            "Submit a media transport command shared by video and music. Use only for pause or resume of the current playback, not for recently played content.",
+            json!({
+                "type": "object",
+                "properties": {
+                    "action": {
+                        "type": "string",
+                        "enum": ["pause", "resume"],
+                        "description": "暂停/停一下=pause；继续播放/继续/播下去/接着放=resume。不要用 resume_video 或 resume_music 表示当前播放继续。"
+                    }
+                },
+                "required": ["action"],
+                "additionalProperties": false
+            }),
+        ),
+        tool(
+            "digital_music_playback",
+            "Submit a normalized music playback request for explicit song, artist, album, decade, or multi-slot music conditions. Do not use this for generic recommendations, genre-only requests, language-only requests, playlists, recent playback, favorites, or track navigation.",
+            json!({
+                "type": "object",
+                "properties": {
+                    "action": {
+                        "type": "string",
+                        "enum": ["play_music", "play_music_by_artist", "play_music_by_decade", "play_music_combined"],
+                        "description": "按歌名/歌手/专辑点播=play_music；按歌手=play_music_by_artist；按年代=play_music_by_decade；歌手/歌曲/年代/语言/类型多槽位组合=play_music_combined。"
+                    },
+                    "song_name": { "type": "string", "description": "歌曲名，例如青花瓷、孤勇者。" },
+                    "artist": { "type": "string", "description": "歌手，例如周杰伦、王菲、BLACKPINK。" },
+                    "album_name": { "type": "string", "description": "专辑名，例如七里香。" },
+                    "decade": { "type": "string", "description": "年代，例如80年代、90年代、最近。" },
+                    "language": { "type": "string", "description": "组合点播中的语言，例如粤语、英语、纯音乐。" },
+                    "genre": { "type": "string", "description": "组合点播中的音乐类型，例如流行、摇滚、古典。" },
+                    "query": { "type": "string", "description": "原始音乐点播请求。" }
+                },
+                "required": ["action"],
+                "additionalProperties": false
+            }),
+        ),
+        tool(
+            "digital_music_recommendation",
+            "Submit a generic music recommendation request. Use only when the user has no concrete song, artist, playlist, genre, language, or decade slot and just wants any music.",
+            json!({
+                "type": "object",
+                "properties": {
+                    "action": {
+                        "type": "string",
+                        "enum": ["play_recommended_music"],
+                        "description": "音乐泛意图播放，例如想听歌、推荐点音乐、随便放首歌。"
+                    },
+                    "query": { "type": "string", "description": "用户原始泛意图。" }
+                },
+                "required": ["action"],
+                "additionalProperties": false
+            }),
+        ),
+        tool(
+            "digital_music_genre_playback",
+            "Submit a music playback request constrained by music genre. Use whenever the user names a music type such as 流行、摇滚、嘻哈、电子、R&B、爵士、古典、乡村、蓝调、金属、拉丁、舞曲、影视原声, even if the wording sounds like a recommendation.",
+            json!({
+                "type": "object",
+                "properties": {
+                    "action": {
+                        "type": "string",
+                        "enum": ["play_music_by_genre"],
+                        "description": "按音乐类型点播。带 genre 时不要使用 play_recommended_music。"
+                    },
+                    "genre": { "type": "string", "description": "音乐类型，例如流行、摇滚、古典。" },
+                    "query": { "type": "string", "description": "用户原始类型点播请求。" }
+                },
+                "required": ["action", "genre"],
+                "additionalProperties": false
+            }),
+        ),
+        tool(
+            "digital_music_language_playback",
+            "Submit a music playback request constrained by language. Use whenever the user names a music language such as 国语、粤语、英语、日语、韩语、西班牙语、法语、纯音乐, even if the wording sounds like a recommendation.",
+            json!({
+                "type": "object",
+                "properties": {
+                    "action": {
+                        "type": "string",
+                        "enum": ["play_music_by_language"],
+                        "description": "按音乐语言点播。带 language 时不要使用 play_recommended_music。"
+                    },
+                    "language": { "type": "string", "description": "音乐语言，例如粤语、英语、纯音乐。" },
+                    "query": { "type": "string", "description": "用户原始语言点播请求。" }
+                },
+                "required": ["action", "language"],
+                "additionalProperties": false
+            }),
+        ),
+        tool(
+            "digital_music_collection_playback",
+            "Submit a music collection playback request. Use for music playlists, recent music playback, and music favorites.",
+            json!({
+                "type": "object",
+                "properties": {
+                    "action": {
+                        "type": "string",
+                        "enum": ["play_music_playlist", "resume_music", "play_music_favorites"],
+                        "description": "播放歌单=play_music_playlist；音乐最近播放=resume_music；收藏歌曲/红心歌曲=play_music_favorites。"
+                    },
+                    "playlist_name": { "type": "string", "description": "歌单名称，例如我的歌单、通勤、睡前、工作。" },
+                    "query": { "type": "string", "description": "用户原始歌单、最近播放或收藏请求。" }
+                },
+                "required": ["action"],
+                "additionalProperties": false
+            }),
+        ),
+        tool(
+            "digital_music_track_control",
+            "Submit a music track navigation command. Use only for next track, previous track, skip, switch song, or repeat current track.",
+            json!({
+                "type": "object",
+                "properties": {
+                    "action": {
+                        "type": "string",
+                        "enum": ["next_track", "previous_track", "repeat_track"],
+                        "description": "下一首/跳过/换一首/切歌=next_track；上一首/回到上一首=previous_track；再听一遍=repeat_track。"
+                    }
+                },
+                "required": ["action"],
+                "additionalProperties": false
+            }),
+        ),
+        tool(
             "digital_security_monitor",
             "Submit a normalized camera/security query. Use for recent events, motion/person/vehicle/package checks, and identity recognition against known face labels.",
             json!({
@@ -975,6 +1215,148 @@ pub fn tool_specs() -> Vec<ToolSpec> {
                     }
                 },
                 "required": ["action", "time_query"],
+                "additionalProperties": false
+            }),
+        ),
+        tool(
+            "digital_security_person_type_query",
+            "Submit a normalized security query for typed-person presence. Use for checking whether a person type such as 陌生人、熟人、爸爸、妈妈、小孩、中年人、老年人 appeared in a camera or area. Do not use identity recognition for counting or presence of a person type in an area.",
+            json!({
+                "type": "object",
+                "properties": {
+                    "action": {
+                        "type": "string",
+                        "enum": ["person_type_presence"],
+                        "description": "不同类型人存在检测。"
+                    },
+                    "person_type": { "type": "string", "description": "人物类型，例如陌生人、熟人、张三、爸爸、妈妈、小孩、老年人。" },
+                    "time_query": { "type": "string", "description": "时间窗口原文，例如现在、今天、昨晚。" },
+                    "area": { "type": "string", "description": "区域，例如门口、客厅、全屋。" },
+                    "camera_name": { "type": "string", "description": "镜头名称，例如门口、走廊、车库。" }
+                },
+                "required": ["action", "person_type", "time_query"],
+                "additionalProperties": false
+            }),
+        ),
+        tool(
+            "digital_security_vehicle_entry_query",
+            "Submit a normalized security query for vehicle entry/exit activity. Use for car coming, going, entering, exiting, passing through, or vehicle activity records.",
+            json!({
+                "type": "object",
+                "properties": {
+                    "action": {
+                        "type": "string",
+                        "enum": ["vehicle_entry"],
+                        "description": "车辆出入查询。"
+                    },
+                    "time_query": { "type": "string", "description": "时间窗口原文。" },
+                    "area": { "type": "string", "description": "区域，例如门口、车库、院子。" },
+                    "camera_name": { "type": "string", "description": "镜头名称。" }
+                },
+                "required": ["action", "time_query"],
+                "additionalProperties": false
+            }),
+        ),
+        tool(
+            "digital_security_vehicle_presence_query",
+            "Submit a normalized security query for vehicle presence, vehicle counts, color, or vehicle type. Do not use this for license plate queries.",
+            json!({
+                "type": "object",
+                "properties": {
+                    "action": {
+                        "type": "string",
+                        "enum": ["vehicle_presence"],
+                        "description": "车辆存在检测。"
+                    },
+                    "vehicle_color": { "type": "string", "description": "车辆颜色，例如白色、黑色、红色。" },
+                    "vehicle_type": { "type": "string", "description": "车型，例如SUV、轿车、电动车、摩托车。" },
+                    "time_query": { "type": "string", "description": "时间窗口原文。" },
+                    "area": { "type": "string", "description": "区域。" },
+                    "camera_name": { "type": "string", "description": "镜头名称。" }
+                },
+                "required": ["action"],
+                "additionalProperties": false
+            }),
+        ),
+        tool(
+            "digital_security_plate_query",
+            "Submit a normalized security query for license plate presence, plate prefixes, complete plate numbers, or listing plate numbers.",
+            json!({
+                "type": "object",
+                "properties": {
+                    "action": {
+                        "type": "string",
+                        "enum": ["plate_presence"],
+                        "description": "车牌存在检测。"
+                    },
+                    "plate_prefix": { "type": "string", "description": "车牌前缀，例如粤B、京A、沪C。" },
+                    "plate_number": { "type": "string", "description": "完整车牌号，例如粤B6789。" },
+                    "time_query": { "type": "string", "description": "时间窗口原文。" },
+                    "area": { "type": "string", "description": "区域。" },
+                    "camera_name": { "type": "string", "description": "镜头名称。" }
+                },
+                "required": ["action"],
+                "additionalProperties": false
+            }),
+        ),
+        tool(
+            "digital_security_pet_activity_query",
+            "Submit a normalized security query for broad pet activity, pet location, pet activity count, or where a pet went. Do not use this for simple in/not-in presence or a named pet behavior.",
+            json!({
+                "type": "object",
+                "properties": {
+                    "action": {
+                        "type": "string",
+                        "enum": ["pet_activity"],
+                        "description": "宠物活动查询。"
+                    },
+                    "pet": { "type": "string", "description": "宠物，例如猫、狗、毛毛。" },
+                    "time_query": { "type": "string", "description": "时间窗口原文。" },
+                    "area": { "type": "string", "description": "区域。" },
+                    "camera_name": { "type": "string", "description": "镜头名称。" }
+                },
+                "required": ["action"],
+                "additionalProperties": false
+            }),
+        ),
+        tool(
+            "digital_security_pet_presence_query",
+            "Submit a normalized security query for simple pet presence: whether a pet is in a camera/area, how many pets are present, or whether a pet is at home.",
+            json!({
+                "type": "object",
+                "properties": {
+                    "action": {
+                        "type": "string",
+                        "enum": ["pet_presence"],
+                        "description": "宠物存在检测。"
+                    },
+                    "pet": { "type": "string", "description": "宠物，例如猫、狗、毛毛。" },
+                    "time_query": { "type": "string", "description": "时间窗口原文。" },
+                    "area": { "type": "string", "description": "区域。" },
+                    "camera_name": { "type": "string", "description": "镜头名称。" }
+                },
+                "required": ["action"],
+                "additionalProperties": false
+            }),
+        ),
+        tool(
+            "digital_security_pet_behavior_query",
+            "Submit a normalized security query for a named pet behavior such as 跑出、翻越、入水、打架、跌倒 or other explicit behavior.",
+            json!({
+                "type": "object",
+                "properties": {
+                    "action": {
+                        "type": "string",
+                        "enum": ["pet_behavior"],
+                        "description": "宠物行为检测。"
+                    },
+                    "pet": { "type": "string", "description": "宠物，例如猫、狗、毛毛。" },
+                    "pet_behavior": { "type": "string", "description": "宠物行为，例如跑出、翻越、入水、打架、跌倒。" },
+                    "time_query": { "type": "string", "description": "时间窗口原文。" },
+                    "area": { "type": "string", "description": "区域。" },
+                    "camera_name": { "type": "string", "description": "镜头名称。" }
+                },
+                "required": ["action", "pet_behavior"],
                 "additionalProperties": false
             }),
         ),
@@ -1403,8 +1785,28 @@ pub async fn run_tool(name: &str, args: Value) -> Result<String> {
         | "digital_photo_metadata"
         | "digital_media_subtitle"
         | "digital_media_control"
+        | "digital_video_playback"
+        | "digital_video_recommendation"
+        | "digital_video_genre_playback"
+        | "digital_video_region_playback"
+        | "digital_video_collection_playback"
+        | "digital_video_episode_control"
+        | "digital_media_transport_control"
+        | "digital_music_playback"
+        | "digital_music_recommendation"
+        | "digital_music_genre_playback"
+        | "digital_music_language_playback"
+        | "digital_music_collection_playback"
+        | "digital_music_track_control"
         | "digital_security_monitor"
         | "digital_security_event_query"
+        | "digital_security_person_type_query"
+        | "digital_security_vehicle_entry_query"
+        | "digital_security_vehicle_presence_query"
+        | "digital_security_plate_query"
+        | "digital_security_pet_activity_query"
+        | "digital_security_pet_presence_query"
+        | "digital_security_pet_behavior_query"
         | "digital_security_camera_control"
         | "digital_security_identity_recognition"
         | "digital_security_person_history"
