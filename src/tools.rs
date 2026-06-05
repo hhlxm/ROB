@@ -1953,11 +1953,14 @@ async fn shell_exec(args: Value) -> Result<String> {
 
 fn smart_home_command(name: &str, mut args: Value) -> Result<String> {
     normalize_smart_home_args(name, &mut args);
+    let action = args.get("action").cloned().unwrap_or(Value::Null);
+    let summary = mock_summary(&args);
     Ok(serde_json::to_string_pretty(&json!({
-        "status": "accepted",
+        "status": "mock_completed",
         "tool": name,
-        "command": args,
-        "note": "normalized smart-home command payload; map this to the real home gateway integration"
+        "action": action,
+        "summary": summary,
+        "message": "Mock backend captured this request. This tool result is terminal; answer the user now and do not repeat the same tool call."
     }))?)
 }
 
@@ -2118,11 +2121,14 @@ fn count_directory_entries(args: &Value, raw_path: &str, path: &Path) -> Result<
 
 fn digital_life_mock_command(name: &str, args: Value) -> Result<String> {
     validate_digital_life_args(name, &args)?;
+    let action = args.get("action").cloned().unwrap_or(Value::Null);
+    let summary = mock_summary(&args);
     Ok(serde_json::to_string_pretty(&json!({
-        "status": "accepted",
+        "status": "mock_completed",
         "tool": name,
-        "command": args,
-        "note": "normalized digital-life payload; map this to the real album, media, security, document, OCR, note, or text backend integration"
+        "action": action,
+        "summary": summary,
+        "message": "Mock backend captured this request. No real backend data is available in mock mode. This tool result is terminal; answer the user now and do not repeat the same tool call."
     }))?)
 }
 
@@ -2579,6 +2585,109 @@ fn required_string_arg(args: &Value, key: &str) -> Result<String> {
     string_arg(args, key).ok_or_else(|| anyhow!("missing string argument `{key}`"))
 }
 
+fn mock_summary(args: &Value) -> Value {
+    let Some(object) = args.as_object() else {
+        return json!({});
+    };
+    let mut summary = serde_json::Map::new();
+    for key in [
+        "path",
+        "source_path",
+        "target_path",
+        "input_path",
+        "photo_path",
+        "photo_id",
+        "title",
+        "song_name",
+        "artist",
+        "director",
+        "actor",
+        "genre",
+        "language",
+        "region",
+        "playlist_name",
+        "album_name",
+        "album_filter",
+        "person_name",
+        "object_name",
+        "camera_name",
+        "area",
+        "scope",
+        "time_query",
+        "person_label",
+        "identity_query",
+        "keyword",
+        "query",
+        "topic",
+        "note_path",
+        "note_a_path",
+        "note_b_path",
+        "tag_name",
+        "new_name",
+        "target_language",
+        "style",
+        "target_length",
+        "text",
+        "outline",
+        "body",
+        "scene_name",
+        "floor",
+        "room",
+        "device_name",
+        "delta_percent",
+        "volume_percent",
+        "brightness_percent",
+        "delta_kelvin",
+        "color_temperature_kelvin",
+        "light_tone",
+        "document_type",
+        "fields",
+        "episode_number",
+    ] {
+        if let Some(value) = object.get(key).and_then(summarize_mock_value) {
+            summary.insert(key.to_string(), value);
+            if summary.len() >= 8 {
+                break;
+            }
+        }
+    }
+    Value::Object(summary)
+}
+
+fn summarize_mock_value(value: &Value) -> Option<Value> {
+    match value {
+        Value::String(text) if !text.trim().is_empty() => {
+            Some(Value::String(truncate_chars(text, 80)))
+        }
+        Value::Number(_) | Value::Bool(_) => Some(value.clone()),
+        Value::Array(items) if !items.is_empty() => {
+            let summarized = items
+                .iter()
+                .take(5)
+                .filter_map(summarize_mock_value)
+                .collect::<Vec<_>>();
+            if summarized.is_empty() {
+                None
+            } else {
+                Some(Value::Array(summarized))
+            }
+        }
+        _ => None,
+    }
+}
+
+fn truncate_chars(value: &str, max_chars: usize) -> String {
+    let mut output = String::new();
+    for (index, ch) in value.chars().enumerate() {
+        if index >= max_chars {
+            output.push_str("...");
+            return output;
+        }
+        output.push(ch);
+    }
+    output
+}
+
 fn require_enum_arg(args: &Value, key: &str, allowed: &[&str]) -> Result<String> {
     let value = required_string_arg(args, key)?;
     if allowed.contains(&value.as_str()) {
@@ -2974,9 +3083,10 @@ mod tests {
         .await
         .unwrap();
 
-        assert!(result.contains(r#""status": "accepted""#));
+        assert!(result.contains(r#""status": "mock_completed""#));
         assert!(result.contains(r#""tool": "digital_media_control""#));
-        assert!(result.contains("客厅电视"));
+        assert!(result.contains("terminal"));
+        assert!(!result.contains("客厅电视"));
     }
 
     #[tokio::test]
@@ -3034,6 +3144,9 @@ mod tests {
         assert!(invalid_event.is_err());
         assert!(valid_home_event.contains(r#""tool": "digital_security_event_query""#));
         assert!(valid_extract.contains(r#""tool": "digital_structured_extract""#));
+        assert!(valid_extract.contains(r#""action": "extract_fields""#));
+        assert!(valid_extract.contains("terminal"));
         assert!(valid_extract.contains("金额"));
+        assert!(!valid_extract.contains("command"));
     }
 }
