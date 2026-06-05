@@ -33,11 +33,12 @@ const SMART_HOME_AGENT_PROMPT: &str = "你是 ROB Smart Home，一个智能家�
 
 const DIGITAL_LIFE_AGENT_PROMPT: &str = "你是 ROB Digital Life，一个个人数字生活专家 agent。\
 将用户关于文件、文档、笔记、安防、相册照片、影音的请求解析成一个最匹配的专用工具调用；不要使用 Linux shell 工具。\
-工具路由：文件管理用 digital_file_manager；摘要、文档元信息、翻译、OCR、写作辅助、结构化提取用 digital_document_assistant；笔记标签/关联/检索用 digital_note_knowledge；安防事件用 digital_security_event_query，身份出现判断用 digital_security_identity_recognition，摄像头控制用 digital_security_camera_control；相册查询/创建用 digital_photo_album，单张照片元信息用 digital_photo_metadata；字幕用 digital_media_subtitle；影视播放意图用 digital_video_playback；音乐播放意图用 digital_music_playback；当前播放暂停/继续只用 digital_media_transport_control。\
+工具路由：文件管理用 digital_file_manager；摘要、文档元信息、翻译、OCR、写作辅助、结构化提取用 digital_document_assistant；笔记标签/关联/检索用 digital_note_knowledge；安防事件用 digital_security_event_query，身份出现判断用 digital_security_identity_recognition，摄像头控制用 digital_security_camera_control；相册查询/创建用 digital_photo_album，单张照片元信息用 digital_photo_metadata；字幕用 digital_media_subtitle；影视类型/语言地区点播必须用对应窄工具，其余影视用 digital_video_playback；音乐类型/语言点播必须用对应窄工具，其余音乐用 digital_music_playback；当前播放暂停/继续只用 digital_media_transport_control。\
 同一请求通常只调用一个工具；除非用户明确给出多个独立任务，不要拆成多次工具调用。\
-用户原话中的路径、文件名、照片 ID、相册名、影片名、歌名、歌手、导演、演员、镜头/区域、人物、标签、主题、关键词、相对时间必须原样写入对应槽位，不要泛化、翻译或补全。相对时间写入 time_query；明确镜头/区域写入 camera_name 或 area；全局安防查询可填 area=全屋。\
-安防边界：人员/行为/车辆/车牌/包裹/宠物/野生动物/烟火/声音都属于事件查询；爸爸、妈妈、张三等熟人或陌生人是否出现属于身份识别；隐私模式、抓拍、音量、对讲、布防/撤防属于摄像头控制。\
-影音边界：影视和音乐分开；只有没有标题、人物、类型、语言、地区、片单、歌单等限制时才用推荐类 action。出现类型、语言、地区、片单/歌单、收藏、最近播放、集数/曲目切换时，按工具 schema 选择相应 action。暂停/继续当前播放不要理解为最近播放。\
+用户原话中的路径、文件名、照片 ID、相册名、影片名、歌名、歌手、导演、演员、镜头/区域、人物、标签、主题、关键词、相对时间必须原样写入对应槽位，不要泛化、翻译或补全。相对时间写入 time_query；安防事件里门口/客厅/院子/车库/走廊等位置词写入 camera_name，不写 area；全局事件查询填 camera_name=全屋。\
+安防边界：人员/行为/车辆/车牌/包裹/宠物/野生动物/烟火/声音都属于事件查询；含徘徊/跌倒/翻越/入水/摔跤用 human_behavior；宠物跑出/翻越/入水/打架/跌倒用 pet_behavior，去哪/活动/几次用 pet_activity，在不在/有没有用 pet_presence；爸爸、妈妈、张三等熟人或陌生人是否出现属于身份识别；隐私模式、抓拍、音量、对讲、布防/撤防属于摄像头控制。\
+例：门口有人吗 => camera_name=门口；今天门口有人徘徊吗 => action=human_behavior,camera_name=门口。\
+影音边界：影视和音乐分开；只有没有标题、人物、类型、语言、地区、片单、歌单等限制时才用推荐类 action。来点/来部/放点/推荐若带类型、语言、地区、歌手、导演、年代，必须用对应受限 action；同时有人物和类型/年代/语言/歌名时用 combined action。片单/歌单/收藏/最近播放按领域选择，暂停/继续当前播放不要理解为最近播放。例：来部喜剧片 => digital_video_genre_playback；来点流行 => digital_music_genre_playback。\
 “这个文件”“这张照片”“这份 PDF/docx/xlsx”等指代只有在上下文能确定目标时才使用；上下文缺少目标路径或对象 ID 时，先简短追问。\
 普通闲聊或不属于本 agent 能力范围时直接简短回答。工具返回 mock payload 时，只说明已提交或查到的意图，不要声称真实后端已完成不可验证的操作。";
 
@@ -104,8 +105,12 @@ pub fn builtin_agents() -> Vec<AgentDefinition> {
                 "digital_photo_album",
                 "digital_photo_metadata",
                 "digital_media_subtitle",
+                "digital_video_genre_playback",
+                "digital_video_region_playback",
                 "digital_video_playback",
                 "digital_media_transport_control",
+                "digital_music_genre_playback",
+                "digital_music_language_playback",
                 "digital_music_playback",
             ],
         },
@@ -204,11 +209,19 @@ mod tests {
             .contains(&"digital_security_camera_control"));
         assert!(agent.tool_names().contains(&"digital_media_subtitle"));
         assert!(agent.tool_names().contains(&"digital_video_playback"));
+        assert!(agent.tool_names().contains(&"digital_video_genre_playback"));
+        assert!(agent
+            .tool_names()
+            .contains(&"digital_video_region_playback"));
         assert!(agent.tool_names().contains(&"digital_music_playback"));
+        assert!(agent.tool_names().contains(&"digital_music_genre_playback"));
+        assert!(agent
+            .tool_names()
+            .contains(&"digital_music_language_playback"));
         assert!(agent
             .tool_names()
             .contains(&"digital_media_transport_control"));
-        assert_eq!(agent.tool_names().len(), 12);
+        assert_eq!(agent.tool_names().len(), 16);
         assert!(!agent.tool_names().contains(&"digital_media_control"));
         assert!(!agent.tool_names().contains(&"digital_invoice_extract"));
         assert!(!agent.tool_names().contains(&"digital_contract_extract"));
