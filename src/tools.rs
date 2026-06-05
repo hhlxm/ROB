@@ -662,15 +662,15 @@ pub fn tool_specs() -> Vec<ToolSpec> {
                     "action": {
                         "type": "string",
                         "enum": ["play_recommended_video", "play_video_title", "play_video_by_director", "play_video_by_actor", "play_video_by_decade", "play_video_by_genre", "play_video_by_language_region", "play_video_combined", "play_video_playlist", "resume_video", "play_video_favorites", "next_episode", "previous_episode", "jump_episode"],
-                        "description": "影视泛推荐=play_recommended_video；按标题/导演/演员/年代/类型/语言地区/多槽位点播用对应 play_video_*；片单=play_video_playlist；最近播放=resume_video；收藏=play_video_favorites；下一集/上一集/跳集用 next_episode/previous_episode/jump_episode。"
+                        "description": "影视泛推荐=play_recommended_video，仅限无标题/导演/演员/年代/类型/语言地区/片单/收藏限制；有类型/语言地区/导演/演员/年代时不要用推荐；多槽位用 play_video_combined；片单=play_video_playlist；最近播放=resume_video；收藏=play_video_favorites；下一集/上一集/跳集用 next_episode/previous_episode/jump_episode。"
                     },
                     "title": { "type": "string", "description": "影视标题，例如《狂飙》《沙丘》。" },
                     "director": { "type": "string", "description": "导演名，例如诺兰、姜文、宫崎骏。" },
                     "actor": { "type": "string", "description": "演员名，例如周星驰、梁朝伟。" },
                     "decade": { "type": "string", "description": "年代，例如80年代、90年代、最近、经典老片。" },
-                    "genre": { "type": "string", "description": "影视类型，例如喜剧、动作、科幻、悬疑、纪录片。" },
-                    "language": { "type": "string", "description": "影视语言，例如国语、粤语、英语、日语。" },
-                    "region": { "type": "string", "description": "影视地区/剧种，例如美剧、韩剧、港片、日剧。" },
+                    "genre": { "type": "string", "description": "影视类型，例如喜剧、动作、科幻、悬疑、纪录片；出现类型词必须用 play_video_by_genre 或 combined。" },
+                    "language": { "type": "string", "description": "影视语言，例如国语、粤语、英语、日语；出现语言词必须用 play_video_by_language_region 或 combined。" },
+                    "region": { "type": "string", "description": "影视地区/剧种，例如美剧、韩剧、港片、日剧；出现地区/剧种必须用 play_video_by_language_region 或 combined。" },
                     "playlist_name": { "type": "string", "description": "片单名称，例如我的片单、想看、周末家庭、经典回顾。" },
                     "episode_number": { "type": "integer", "minimum": 1, "description": "标题点播时带的集数。" },
                     "query": { "type": "string", "description": "用户原始影视请求。" }
@@ -793,14 +793,14 @@ pub fn tool_specs() -> Vec<ToolSpec> {
                     "action": {
                         "type": "string",
                         "enum": ["play_recommended_music", "play_music", "play_music_by_artist", "play_music_by_decade", "play_music_by_genre", "play_music_by_language", "play_music_combined", "play_music_playlist", "resume_music", "play_music_favorites", "next_track", "previous_track", "repeat_track"],
-                        "description": "音乐泛推荐=play_recommended_music；按歌名/歌手/年代/类型/语言/多槽位点播用对应 play_music_*；歌单=play_music_playlist；最近播放=resume_music；收藏=play_music_favorites；下一首/上一首/再听一遍用 next_track/previous_track/repeat_track。"
+                        "description": "音乐泛推荐=play_recommended_music，仅限无歌名/歌手/专辑/年代/类型/语言/歌单/收藏限制；有歌手/类型/语言/年代时不要用推荐；多槽位用 play_music_combined；歌单=play_music_playlist；最近播放=resume_music；收藏=play_music_favorites；下一首/上一首/再听一遍用 next_track/previous_track/repeat_track。"
                     },
                     "song_name": { "type": "string", "description": "歌曲名，例如青花瓷、孤勇者。" },
                     "artist": { "type": "string", "description": "歌手，例如周杰伦、王菲、BLACKPINK。" },
                     "album_name": { "type": "string", "description": "专辑名，例如七里香。" },
                     "decade": { "type": "string", "description": "年代，例如80年代、90年代、最近。" },
-                    "language": { "type": "string", "description": "音乐语言，例如粤语、英语、纯音乐。" },
-                    "genre": { "type": "string", "description": "音乐类型，例如流行、摇滚、古典。" },
+                    "language": { "type": "string", "description": "音乐语言，例如粤语、英语、纯音乐；出现语言词必须用 play_music_by_language 或 combined。" },
+                    "genre": { "type": "string", "description": "音乐类型，例如流行、摇滚、古典；出现类型词必须用 play_music_by_genre 或 combined。" },
                     "playlist_name": { "type": "string", "description": "歌单名称，例如我的歌单、通勤、睡前、工作。" },
                     "query": { "type": "string", "description": "原始音乐点播请求。" }
                 },
@@ -1137,22 +1137,18 @@ pub fn tool_specs() -> Vec<ToolSpec> {
         ),
         tool(
             "digital_security_event_query",
-            "Submit a normalized security event query. Use for person presence, human behavior, typed-person presence, vehicle entry/presence, license plate presence, package status, pet activity/presence/behavior, wild animals, smoke/fire, glass breaking, cough, and crying events. Always preserve the user's time and camera/area slots.",
+            "Submit a normalized security event query. Use for person presence, human behavior, typed-person presence, vehicle entry/presence, license plate presence, package status, pet activity/presence/behavior, wild animals, smoke/fire, glass breaking, cough, and crying events. Always preserve time_query and camera_name; never use an area argument for this tool.",
             json!({
                 "type": "object",
                 "properties": {
                     "action": {
                         "type": "string",
                         "enum": ["person_presence", "human_behavior", "person_type_presence", "vehicle_entry", "vehicle_presence", "plate_presence", "package_query", "package_status", "pet_activity", "pet_presence", "pet_behavior", "wild_animal_detection", "smoke_fire_detection", "glass_break_detection", "cough_detection", "crying_detection"],
-                        "description": "人员存在查询=person_presence；人行为检测=human_behavior；不同类型人存在检测=person_type_presence；车辆出入查询=vehicle_entry；车辆存在检测=vehicle_presence；车牌存在检测=plate_presence；包裹/快递查询=package_query；包裹状态检测=package_status；宠物活动查询=pet_activity；宠物存在检测=pet_presence；宠物行为检测=pet_behavior；野生动物检测=wild_animal_detection；烟火检测=smoke_fire_detection；玻璃破碎检测=glass_break_detection；咳嗽声检测=cough_detection；哭声检测=crying_detection。"
-                    },
-                    "area": {
-                        "type": "string",
-                        "description": "用户原文提到的区域或房间，例如“门口”“客厅”“院子”“阳台”“后院”“泳池”“顶楼花园”。没有具体镜头但全局查询时填“全屋”。"
+                        "description": "人员存在=person_presence；徘徊/跌倒/翻越/入水/摔跤=human_behavior；陌生人/熟人/小孩等类型人存在=person_type_presence；车辆进出=vehicle_entry；车辆颜色/车型存在=vehicle_presence；车牌=plate_presence；快递查询=package_query，送达/丢失/取走=package_status；宠物活动/去哪/几次=pet_activity，宠物在不在/有没有=pet_presence，宠物跑出/翻越/入水/打架/跌倒=pet_behavior；野生动物/烟火/玻璃破碎/咳嗽/哭声用对应 detection。"
                     },
                     "camera_name": {
                         "type": "string",
-                        "description": "用户原文明确提到的镜头/摄像头名称，例如“门口”“车库”“儿童房”。如果用户说的是镜头名，优先填 camera_name；也可同步填 area。"
+                        "description": "镜头/摄像头名称。门口、客厅、院子、阳台、卧室、书房、厨房、走廊、车库、地下室、长辈房、儿童房、影音室、后院、泳池、顶楼花园等位置词都填这里；无明确镜头的全局事件查询填“全屋”。"
                     },
                     "time_query": {
                         "type": "string",
@@ -1216,7 +1212,7 @@ pub fn tool_specs() -> Vec<ToolSpec> {
                         "description": "声音类型，例如“玻璃破碎”“摔东西”“打碎声”“咳嗽”“咳”“呛声”“宝宝哭”“小孩哭”“哭声”。"
                     }
                 },
-                "required": ["action", "time_query"],
+                "required": ["action", "time_query", "camera_name"],
                 "additionalProperties": false
             }),
         ),
@@ -1403,7 +1399,7 @@ pub fn tool_specs() -> Vec<ToolSpec> {
         ),
         tool(
             "digital_security_identity_recognition",
-            "Submit a normalized security identity-recognition query. Use for checking whether a known person or a stranger appeared in a time window.",
+            "Submit a normalized security identity-recognition query. Use for checking whether a known person or a stranger appeared in a time window. Preserve camera_name for camera positions.",
             json!({
                 "type": "object",
                 "properties": {
@@ -1414,11 +1410,11 @@ pub fn tool_specs() -> Vec<ToolSpec> {
                     },
                     "area": {
                         "type": "string",
-                        "description": "用户提到的区域或房间，例如“门口”“客厅”“院子”“全屋”。"
+                        "description": "区域/房间。若是门口、客厅、院子、车库、走廊等摄像头位置，必须同时或优先填 camera_name。"
                     },
                     "camera_name": {
                         "type": "string",
-                        "description": "明确的镜头名称，例如“门口”“走廊”“车库”。"
+                        "description": "明确的镜头名称，例如“门口”“客厅”“院子”“走廊”“车库”。位置词是摄像头位置时必须填写。"
                     },
                     "time_query": {
                         "type": "string",
@@ -2014,8 +2010,12 @@ fn digital_file_manager(args: Value) -> Result<String> {
 }
 
 fn file_properties(raw_path: &str, path: &Path) -> Result<String> {
-    let metadata = std::fs::metadata(path)
-        .with_context(|| format!("failed to read metadata for {}", path.display()))?;
+    let metadata = match std::fs::metadata(path) {
+        Ok(metadata) => metadata,
+        Err(error) => {
+            return file_unavailable_result("get_properties", raw_path, path, error);
+        }
+    };
     let kind = file_kind(&metadata);
 
     Ok(serde_json::to_string_pretty(&json!({
@@ -2040,9 +2040,14 @@ fn list_directory_details(args: &Value, raw_path: &str, path: &Path) -> Result<S
     let max_entries = usize_arg(args, "max_entries").unwrap_or(50).clamp(1, 200);
     let mut entries = Vec::new();
 
-    for entry in std::fs::read_dir(path)
-        .with_context(|| format!("failed to read directory {}", path.display()))?
-    {
+    let read_dir = match std::fs::read_dir(path) {
+        Ok(read_dir) => read_dir,
+        Err(error) => {
+            return file_unavailable_result("list_directory", raw_path, path, error);
+        }
+    };
+
+    for entry in read_dir {
         let entry = entry?;
         let name = entry.file_name().to_string_lossy().to_string();
         if !include_hidden && name.starts_with('.') {
@@ -2085,9 +2090,14 @@ fn count_directory_entries(args: &Value, raw_path: &str, path: &Path) -> Result<
     let mut dirs = 0usize;
     let mut others = 0usize;
 
-    for entry in std::fs::read_dir(path)
-        .with_context(|| format!("failed to read directory {}", path.display()))?
-    {
+    let read_dir = match std::fs::read_dir(path) {
+        Ok(read_dir) => read_dir,
+        Err(error) => {
+            return file_unavailable_result("count_directory", raw_path, path, error);
+        }
+    };
+
+    for entry in read_dir {
         let entry = entry?;
         let name = entry.file_name().to_string_lossy().to_string();
         if !include_hidden && name.starts_with('.') {
@@ -2116,6 +2126,23 @@ fn count_directory_entries(args: &Value, raw_path: &str, path: &Path) -> Result<
             "others": others,
             "total": files + dirs + others
         }
+    }))?)
+}
+
+fn file_unavailable_result(
+    action: &str,
+    raw_path: &str,
+    path: &Path,
+    error: std::io::Error,
+) -> Result<String> {
+    Ok(serde_json::to_string_pretty(&json!({
+        "status": "file_unavailable",
+        "tool": "digital_file_manager",
+        "action": action,
+        "path": raw_path,
+        "resolved_path": path.display().to_string(),
+        "error_kind": error.kind().to_string(),
+        "message": "The local file backend could not read this path. This result is terminal; answer the user now and do not repeat the same tool call."
     }))?)
 }
 
