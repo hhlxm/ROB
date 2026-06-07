@@ -169,7 +169,13 @@ ROB 支持多个 agent。每个 agent 都有自己的 system prompt 和可用工
 - `main`：默认 Linux agent，保留此前 ROB 的 prompt 和完整工具集合。
 - `reader`：只读检查 agent，使用独立 prompt，只暴露 `pwd`、`list_dir`、`read_file`、`search_text`。
 - `smart_home`：智能家居控制 agent，使用中文 prompt，只暴露灯光、窗帘、扬声器、插座/墙壁开关、场景模式等专用控制工具。
-- `digital_life`：个人数字生活 agent，覆盖文件、相册、照片元数据、影音播放、监控安防、文档处理、短文本处理、知识笔记等场景，主要返回 mock 规范化 payload。
+- `digital_files`：文件智能管家，处理文件属性、目录列表/统计、移动/复制、重命名和文件标签。
+- `digital_documents`：文档智能助手，处理 PDF、Word、PPT、表格、OCR、结构化提取和短文本写作。
+- `digital_knowledge`：知识学习助手，处理笔记标签、笔记关联、主题创建、知识检索、笔记问答和学习文本处理。
+- `digital_security`：监控安防管家，处理监控事件、身份识别、当前主体识别和摄像头控制。
+- `digital_photos`：智能相册专家，处理相册查询/创建、共享相册、照片所在相册和单张照片元信息。
+- `digital_media`：娱乐影音大咖，处理影视、音乐、字幕、投屏、播放进度和播放控制。
+- `digital_life`：兼容旧入口的个人数字生活大 agent。新流程建议使用上面六个细分 agent。
 
 查看 agent：
 
@@ -178,7 +184,12 @@ cargo run -- agents list
 cargo run -- agents show main
 cargo run -- agents show reader
 cargo run -- agents show smart_home
-cargo run -- agents show digital_life
+cargo run -- agents show digital_files
+cargo run -- agents show digital_documents
+cargo run -- agents show digital_knowledge
+cargo run -- agents show digital_security
+cargo run -- agents show digital_photos
+cargo run -- agents show digital_media
 ```
 
 指定 agent：
@@ -188,7 +199,12 @@ cargo run -- ask "查看 README 的主要内容" --agent reader
 cargo run -- chat --agent main
 cargo run -- tui --agent reader
 cargo run -- ask "把一楼客厅主灯亮度调到 50%" --agent smart_home
-cargo run -- ask "/Downloads 里有啥" --agent digital_life
+cargo run -- ask "/Downloads 里有啥" --agent digital_files
+cargo run -- ask "把 合同.pdf 的第 3-10 页拆出来" --agent digital_documents
+cargo run -- ask "我有没有写过 Rust async 的笔记" --agent digital_knowledge
+cargo run -- ask "今天门口有人徘徊吗" --agent digital_security
+cargo run -- ask "这张照片在哪拍的" --agent digital_photos
+cargo run -- ask "来部喜剧片" --agent digital_media
 ```
 
 恢复 session 时，如果没有传 `--agent`，ROB 会根据 session 第一条 system prompt 识别对应 agent；如果显式传入 `--agent`，则以当前参数为准。
@@ -255,27 +271,22 @@ cargo run -- tools run smart_home_control_light '{"floor":"一楼","room":"客�
 cargo run -- tools run smart_home_control_scene '{"scene_name":"回家模式","action":"activate"}'
 ```
 
-个人数字生活 agent 的专用工具：
+个人数字生活领域 agent 的专用工具：
 
-- `digital_file_manager`：已知路径属性、文件大小、单目录列表、单目录文件计数。该工具会真实读取本地文件系统元数据。
-- `digital_photo_album_search`：相册列表、共享相册、相册搜索、照片所在相册。
-- `digital_photo_metadata`：单张照片拍摄时间、地点、相机和 EXIF 信息。
-- `digital_media_control`：播放、暂停、继续、选集、切换音轨/字幕、投屏、播放进度查询。
-- `digital_security_event_query`：监控事件查询、区域动静、车辆/快递/人员出现。
-- `digital_security_identity_recognition`：已知人脸标签、陌生人、熟人、快递员和当前画面主体识别。
-- `digital_pdf_document`：PDF 加密、拆页、合并、旋转、水印、表单提取和元信息查询。
-- `digital_word_document`：Word 创建、文本替换、批注提取、目录添加和元信息查询。
-- `digital_ppt_generation`：按短大纲或要点生成 PPT。
-- `digital_spreadsheet`：xlsx 公式列、CSV 转 xlsx、筛选行、新建表格。
-- `digital_ocr`：图片/截图文字识别、扫描件转可搜索文本。
-- `digital_structured_extract`：发票、票据、合同等单文件字段提取。
-- `digital_text_assistant`：短文本总结、翻译、润色、改写、扩写、压缩。
-- `digital_note_knowledge`：笔记打标签、关联笔记、新建主题、关键词检索、笔记问答。
+- `digital_files` 暴露 `digital_file_manager`：已知路径属性、单目录列表/计数、移动/复制、重命名、文件标签。该工具会真实读取本地文件系统元数据。
+- `digital_documents` 暴露文档工具：`digital_document_assistant`、`digital_document_workspace`、`digital_pdf_document`、`digital_word_document`、`digital_ppt_generation`、`digital_spreadsheet`、`digital_ocr`、`digital_structured_extract`、`digital_text_assistant`。
+- `digital_knowledge` 暴露 `digital_note_knowledge`、`digital_text_assistant`：笔记打标签、关联笔记、新建主题、关键词检索、笔记问答和学习文本处理。
+- `digital_security` 暴露安防工具：`digital_security_event_query`、`digital_security_identity_recognition`、`digital_security_camera_control` 以及人员、车辆、车牌、宠物、历史身份和当前主体识别等窄工具。
+- `digital_photos` 暴露相册工具：`digital_photo_album`、`digital_photo_album_search`、`digital_photo_metadata`、`digital_photo_library`。
+- `digital_media` 暴露影音工具：`digital_video_playback`、`digital_video_genre_playback`、`digital_video_region_playback`、`digital_video_collection_playback`、`digital_video_episode_control`、`digital_music_playback`、`digital_music_genre_playback`、`digital_music_language_playback`、`digital_music_collection_playback`、`digital_music_track_control`、`digital_media_subtitle`、`digital_media_transport_control`、`digital_media_control`。
 
 除 `digital_file_manager` 外，这些工具当前返回规范化 mock payload，方便后续接入相册索引、媒体服务、安防服务、OCR、文档处理或知识库后端。示例：
 
 ```bash
-cargo run -- tools list --agent digital_life
+cargo run -- tools list --agent digital_files
+cargo run -- tools list --agent digital_documents
+cargo run -- tools list --agent digital_security
+cargo run -- tools list --agent digital_media
 cargo run -- tools run digital_file_manager '{"action":"count_directory","path":"."}'
 cargo run -- tools run digital_pdf_document '{"action":"extract_pages","input_paths":["合同.pdf"],"page_range":"3-10"}'
 cargo run -- tools run digital_media_control '{"action":"cast_to_device","target_device":"客厅电视"}'
