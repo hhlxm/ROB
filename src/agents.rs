@@ -42,6 +42,118 @@ const DIGITAL_LIFE_AGENT_PROMPT: &str = "你是 ROB Digital Life，一个个人�
 “这个文件”“这张照片”“这份 PDF/docx/xlsx”等指代只有在上下文能确定目标时才使用；上下文缺少目标路径或对象 ID 时，先简短追问。\
 普通闲聊或不属于本 agent 能力范围时直接简短回答。工具返回 mock payload 时，只说明已提交或查到的意图，不要声称真实后端已完成不可验证的操作。";
 
+const DIGITAL_FILES_AGENT_PROMPT: &str = "你是 ROB 文件智能管家，一个专注本地文件管理的 agent。\
+只处理文件和目录相关请求，包括查看属性、列目录、统计目录、移动/复制单个文件、重命名、添加/删除/查询文件标签；不要使用 Linux shell 工具。\
+文件管理请求一律使用 digital_file_manager。用户原话中的路径、文件名、目标目录、新文件名、标签名必须原样写入对应字段，不要泛化、翻译或补全。\
+如果用户说“这个文件”“这个目录”等指代，只有上下文能确定目标路径时才使用；无法确定时用简短中文追问。\
+同一请求通常只调用一次工具；只有用户明确给出多个独立文件任务时才发起多个独立调用。工具返回 mock payload 时，只说明已提交或查到的意图，不要声称真实后端已完成不可验证的操作。";
+
+const DIGITAL_DOCUMENTS_AGENT_PROMPT: &str = "你是 ROB 文档智能助手，一个专注文档处理、OCR、结构化提取和短文本写作的 agent。\
+将用户关于 PDF、Word、PPT、表格、图片 OCR、扫描件、票据/发票/合同字段提取、短文本总结/翻译/润色/改写/扩写/压缩的请求解析成最匹配的文档工具调用；不要使用 Linux shell 工具。\
+工具路由：PDF 加密/拆页/合并/旋转/水印/表单/元信息用 digital_pdf_document；Word 创建/替换/批注/目录/元信息用 digital_word_document；PPT 生成用 digital_ppt_generation；表格公式列/CSV 转 xlsx/筛选/新建用 digital_spreadsheet；图片或扫描件文字识别用 digital_ocr；发票/票据/合同等字段提取用 digital_structured_extract；短文本总结、翻译、润色、改写、扩写、压缩用 digital_text_assistant；无法确定细分格式但仍是文档工作流时可用 digital_document_assistant 或 digital_document_workspace。\
+用户原话中的文件路径、页码范围、密码、水印文字、字段名、标题、大纲、公式、筛选条件、目标语言和输出路径必须原样写入对应槽位。\
+“这个文档”“这份 PDF/docx/xlsx/图片”等指代只有上下文能确定目标文件时才使用；缺少必要路径、页码范围、密码或字段时，先简短追问。工具返回 mock payload 时，只说明已提交或查到的意图，不要声称真实后端已完成不可验证的操作。";
+
+const DIGITAL_KNOWLEDGE_AGENT_PROMPT: &str = "你是 ROB 知识学习助手，一个专注笔记、知识库、学习材料整理和简短学习文本处理的 agent。\
+将用户关于笔记打标签、关联笔记、新建主题、关键词检索、笔记问答，以及学习文本总结/翻译/改写/扩写/压缩的请求解析成最匹配的工具调用；不要使用 Linux shell 工具。\
+工具路由：笔记标签、笔记关联、主题创建、关键词检索、基于笔记的问答用 digital_note_knowledge；短学习文本的总结、翻译、润色、改写、扩写、压缩用 digital_text_assistant。\
+用户原话中的笔记路径、笔记 ID、主题名、标签名、关键词、问题和待处理文本必须原样写入对应槽位，不要替换成更泛化的词。\
+如果用户问“我有没有写过/学过/整理过某主题”，优先用 digital_note_knowledge 的检索或问答动作；如果只是让你处理一段直接给出的短文本，用 digital_text_assistant。工具返回 mock payload 时，只说明已提交或查到的意图，不要声称真实知识库已有不可验证内容。";
+
+const DIGITAL_SECURITY_AGENT_PROMPT: &str = "你是 ROB 监控安防管家，一个专注家庭摄像头、监控事件、身份识别和摄像头控制的 agent。\
+将用户关于人员/行为/车辆/车牌/包裹/宠物/野生动物/烟火/声音事件、已知人或陌生人出现、当前画面主体识别、隐私模式、抓拍、音量、对讲、布防/撤防的请求解析成最匹配的安防工具调用；不要使用 Linux shell 工具。\
+工具路由：人员、行为、车辆、车牌、包裹、宠物、野生动物、烟火、玻璃破碎、咳嗽、哭声等事件优先用 digital_security_event_query；已知人物或陌生人是否出现用 digital_security_identity_recognition，历史人物/身份类别查询可用 digital_security_person_history 或 digital_security_identity_history，当前门口/镜头是谁用 digital_security_current_subject；隐私模式、抓拍、音量、对讲、布防/撤防用 digital_security_camera_control。窄事件工具仅在其 schema 更准确匹配用户意图时使用。\
+用户原话中的门口、客厅、院子、车库、走廊等位置词优先写入 camera_name；全局事件查询填 camera_name=全屋；时间表达必须原样写入 time_query，当前状态未说明时间时填“现在”。\
+不要把安防位置写成不存在于工具 schema 的字段；不要把“继续播放”等影音意图误判为安防。工具返回 mock payload 时，只说明已提交或查到的意图，不要声称真实摄像头后端已完成不可验证操作。";
+
+const DIGITAL_PHOTOS_AGENT_PROMPT: &str = "你是 ROB 智能相册专家，一个专注相册、照片检索和照片元信息的 agent。\
+将用户关于相册列表、共享相册、人物相册、物体/场景相册、创建相册、照片在哪个相册、单张照片拍摄时间/地点/相机/EXIF 的请求解析成最匹配的相册工具调用；不要使用 Linux shell 工具。\
+工具路由：相册列表、人物相册、物体/场景相册、新建相册用 digital_photo_album；共享相册、按相册名搜索、查询照片在哪个相册用 digital_photo_album_search；单张照片拍摄时间、地点、相机、EXIF 或完整元信息用 digital_photo_metadata；兼容旧的混合相册查询可用 digital_photo_library。\
+用户原话中的相册名、人物名、物体/场景名、照片 ID、照片路径和照片自然语言描述必须原样写入对应槽位。\
+“这张照片”只有上下文能确定 photo_id 或 photo_path 时才使用；无法确定时先简短追问。工具返回 mock payload 时，只说明已提交或查到的意图，不要声称真实相册后端已有不可验证结果。";
+
+const DIGITAL_MEDIA_AGENT_PROMPT: &str = "你是 ROB 娱乐影音大咖，一个专注影视、音乐、字幕和播放控制的 agent。\
+将用户关于影视点播/推荐、音乐点播/推荐、片单/歌单/收藏/最近播放、选集/切歌、字幕搜索下载、投屏、音轨/字幕切换、播放进度、暂停/继续当前播放的请求解析成最匹配的影音工具调用；不要使用 Linux shell 工具。\
+工具路由：影视类型点播必须用 digital_video_genre_playback，影视语言/地区点播必须用 digital_video_region_playback，普通影视标题/导演/演员/年代/组合条件用 digital_video_playback，影视片单/最近播放/收藏用 digital_video_collection_playback，选集用 digital_video_episode_control；音乐类型点播必须用 digital_music_genre_playback，音乐语言点播必须用 digital_music_language_playback，普通歌曲/歌手/专辑/年代/组合条件用 digital_music_playback，歌单/最近播放/收藏用 digital_music_collection_playback，切歌/上一首/再听一遍用 digital_music_track_control；当前播放暂停/继续只用 digital_media_transport_control；字幕搜索/下载挂载用 digital_media_subtitle；投屏、播放进度、音轨切换等跨媒体控制可用 digital_media_control。\
+影视和音乐必须分开判断；只有没有标题、人物、类型、语言、地区、片单、歌单等限制时才使用泛推荐。来点/来部/放点/推荐若带类型、语言、地区、歌手、导演、年代，必须使用对应受限工具；同时有人物和类型/年代/语言/歌名时用 combined action。\
+用户原话中的影片名、剧名、歌名、歌手、导演、演员、类型、语言、地区、片单/歌单名、集数、字幕版本、目标设备必须原样写入对应槽位。工具返回 mock payload 时，只说明已提交或查到的意图，不要声称真实影音后端已完成不可验证操作。";
+
+const DIGITAL_FILE_TOOLS: &[&str] = &["digital_file_manager"];
+
+const DIGITAL_DOCUMENT_TOOLS: &[&str] = &[
+    "digital_document_assistant",
+    "digital_document_workspace",
+    "digital_pdf_document",
+    "digital_word_document",
+    "digital_ppt_generation",
+    "digital_spreadsheet",
+    "digital_ocr",
+    "digital_structured_extract",
+    "digital_text_assistant",
+];
+
+const DIGITAL_KNOWLEDGE_TOOLS: &[&str] = &["digital_note_knowledge", "digital_text_assistant"];
+
+const DIGITAL_SECURITY_TOOLS: &[&str] = &[
+    "digital_security_event_query",
+    "digital_security_person_type_query",
+    "digital_security_vehicle_entry_query",
+    "digital_security_vehicle_presence_query",
+    "digital_security_plate_query",
+    "digital_security_pet_activity_query",
+    "digital_security_pet_presence_query",
+    "digital_security_pet_behavior_query",
+    "digital_security_camera_control",
+    "digital_security_identity_recognition",
+    "digital_security_person_history",
+    "digital_security_identity_history",
+    "digital_security_current_subject",
+];
+
+const DIGITAL_PHOTO_TOOLS: &[&str] = &[
+    "digital_photo_album",
+    "digital_photo_album_search",
+    "digital_photo_metadata",
+    "digital_photo_library",
+];
+
+const DIGITAL_MEDIA_TOOLS: &[&str] = &[
+    "digital_media_subtitle",
+    "digital_video_playback",
+    "digital_video_recommendation",
+    "digital_video_genre_playback",
+    "digital_video_region_playback",
+    "digital_video_collection_playback",
+    "digital_video_episode_control",
+    "digital_media_transport_control",
+    "digital_media_control",
+    "digital_music_playback",
+    "digital_music_recommendation",
+    "digital_music_genre_playback",
+    "digital_music_language_playback",
+    "digital_music_collection_playback",
+    "digital_music_track_control",
+];
+
+const DIGITAL_LIFE_LEGACY_TOOLS: &[&str] = &[
+    "digital_file_manager",
+    "digital_document_assistant",
+    "digital_note_knowledge",
+    "digital_security_event_query",
+    "digital_security_identity_recognition",
+    "digital_security_camera_control",
+    "digital_photo_album",
+    "digital_photo_metadata",
+    "digital_media_subtitle",
+    "digital_video_genre_playback",
+    "digital_video_region_playback",
+    "digital_video_playback",
+    "digital_media_transport_control",
+    "digital_music_genre_playback",
+    "digital_music_language_playback",
+    "digital_music_playback",
+];
+
 #[derive(Debug, Clone)]
 pub struct AgentDefinition {
     pub name: &'static str,
@@ -92,27 +204,46 @@ pub fn builtin_agents() -> Vec<AgentDefinition> {
             ],
         },
         AgentDefinition {
+            name: "digital_files",
+            description: "文件智能管家：focused digital-life agent for file and directory management.",
+            system_prompt: DIGITAL_FILES_AGENT_PROMPT,
+            tool_names: DIGITAL_FILE_TOOLS,
+        },
+        AgentDefinition {
+            name: "digital_documents",
+            description: "文档智能助手：focused digital-life agent for documents, OCR, extraction, spreadsheets, PPT, and short text.",
+            system_prompt: DIGITAL_DOCUMENTS_AGENT_PROMPT,
+            tool_names: DIGITAL_DOCUMENT_TOOLS,
+        },
+        AgentDefinition {
+            name: "digital_knowledge",
+            description: "知识学习助手：focused digital-life agent for notes, knowledge search, learning QA, and study text.",
+            system_prompt: DIGITAL_KNOWLEDGE_AGENT_PROMPT,
+            tool_names: DIGITAL_KNOWLEDGE_TOOLS,
+        },
+        AgentDefinition {
+            name: "digital_security",
+            description: "监控安防管家：focused digital-life agent for camera events, identity recognition, and security controls.",
+            system_prompt: DIGITAL_SECURITY_AGENT_PROMPT,
+            tool_names: DIGITAL_SECURITY_TOOLS,
+        },
+        AgentDefinition {
+            name: "digital_photos",
+            description: "智能相册专家：focused digital-life agent for albums, photo search, and photo metadata.",
+            system_prompt: DIGITAL_PHOTOS_AGENT_PROMPT,
+            tool_names: DIGITAL_PHOTO_TOOLS,
+        },
+        AgentDefinition {
+            name: "digital_media",
+            description: "娱乐影音大咖：focused digital-life agent for video, music, subtitles, and playback controls.",
+            system_prompt: DIGITAL_MEDIA_AGENT_PROMPT,
+            tool_names: DIGITAL_MEDIA_TOOLS,
+        },
+        AgentDefinition {
             name: "digital_life",
-            description: "Personal digital-life agent for files, albums, photos, media, security, documents, text, and notes.",
+            description: "Legacy broad digital-life agent. Prefer the six focused digital_* agents for new workflows.",
             system_prompt: DIGITAL_LIFE_AGENT_PROMPT,
-            tool_names: &[
-                "digital_file_manager",
-                "digital_document_assistant",
-                "digital_note_knowledge",
-                "digital_security_event_query",
-                "digital_security_identity_recognition",
-                "digital_security_camera_control",
-                "digital_photo_album",
-                "digital_photo_metadata",
-                "digital_media_subtitle",
-                "digital_video_genre_playback",
-                "digital_video_region_playback",
-                "digital_video_playback",
-                "digital_media_transport_control",
-                "digital_music_genre_playback",
-                "digital_music_language_playback",
-                "digital_music_playback",
-            ],
+            tool_names: DIGITAL_LIFE_LEGACY_TOOLS,
         },
     ]
 }
@@ -189,7 +320,79 @@ mod tests {
     }
 
     #[test]
-    fn digital_life_agent_has_dedicated_prompt_and_tools() {
+    fn focused_digital_life_agents_have_domain_prompts_and_tools() {
+        let file_agent = resolve_agent(Some("digital_files")).unwrap();
+        assert!(file_agent.system_prompt.contains("文件智能管家"));
+        assert_eq!(file_agent.tool_names(), DIGITAL_FILE_TOOLS);
+        assert!(!file_agent.tool_names().contains(&"shell_exec"));
+
+        let document_agent = resolve_agent(Some("digital_documents")).unwrap();
+        assert!(document_agent.system_prompt.contains("文档智能助手"));
+        assert_eq!(document_agent.tool_names(), DIGITAL_DOCUMENT_TOOLS);
+        assert!(document_agent
+            .tool_names()
+            .contains(&"digital_pdf_document"));
+        assert!(document_agent
+            .tool_names()
+            .contains(&"digital_text_assistant"));
+        assert!(!document_agent
+            .tool_names()
+            .contains(&"digital_note_knowledge"));
+        assert!(!document_agent.tool_names().contains(&"shell_exec"));
+
+        let knowledge_agent = resolve_agent(Some("digital_knowledge")).unwrap();
+        assert!(knowledge_agent.system_prompt.contains("知识学习助手"));
+        assert_eq!(knowledge_agent.tool_names(), DIGITAL_KNOWLEDGE_TOOLS);
+        assert!(knowledge_agent
+            .tool_names()
+            .contains(&"digital_note_knowledge"));
+        assert!(!knowledge_agent
+            .tool_names()
+            .contains(&"digital_pdf_document"));
+        assert!(!knowledge_agent.tool_names().contains(&"shell_exec"));
+
+        let security_agent = resolve_agent(Some("digital_security")).unwrap();
+        assert!(security_agent.system_prompt.contains("监控安防管家"));
+        assert_eq!(security_agent.tool_names(), DIGITAL_SECURITY_TOOLS);
+        assert!(security_agent
+            .tool_names()
+            .contains(&"digital_security_event_query"));
+        assert!(security_agent
+            .tool_names()
+            .contains(&"digital_security_camera_control"));
+        assert!(!security_agent
+            .tool_names()
+            .contains(&"digital_media_control"));
+        assert!(!security_agent.tool_names().contains(&"shell_exec"));
+
+        let photo_agent = resolve_agent(Some("digital_photos")).unwrap();
+        assert!(photo_agent.system_prompt.contains("智能相册专家"));
+        assert_eq!(photo_agent.tool_names(), DIGITAL_PHOTO_TOOLS);
+        assert!(photo_agent.tool_names().contains(&"digital_photo_album"));
+        assert!(photo_agent.tool_names().contains(&"digital_photo_metadata"));
+        assert!(!photo_agent.tool_names().contains(&"digital_file_manager"));
+        assert!(!photo_agent.tool_names().contains(&"shell_exec"));
+
+        let media_agent = resolve_agent(Some("digital_media")).unwrap();
+        assert!(media_agent.system_prompt.contains("娱乐影音大咖"));
+        assert_eq!(media_agent.tool_names(), DIGITAL_MEDIA_TOOLS);
+        assert!(media_agent
+            .tool_names()
+            .contains(&"digital_video_genre_playback"));
+        assert!(media_agent
+            .tool_names()
+            .contains(&"digital_music_language_playback"));
+        assert!(media_agent
+            .tool_names()
+            .contains(&"digital_media_transport_control"));
+        assert!(!media_agent
+            .tool_names()
+            .contains(&"digital_security_event_query"));
+        assert!(!media_agent.tool_names().contains(&"shell_exec"));
+    }
+
+    #[test]
+    fn legacy_digital_life_agent_keeps_existing_prompt_and_tools() {
         let agent = resolve_agent(Some("digital_life")).unwrap();
 
         assert!(agent.system_prompt.contains("个人数字生活专家 agent"));
