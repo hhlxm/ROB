@@ -393,7 +393,7 @@ pub fn tool_specs() -> Vec<ToolSpec> {
         ),
         tool(
             "digital_file_manager",
-            "Submit a normalized file-management request. Use for single-file properties, listing a directory, moving/copying one file, adding/removing/listing file tags, and renaming one file.",
+            "Submit a normalized file-management request. Use for single-file properties, listing a directory, moving/copying one file, adding/removing/listing file tags, and renaming one file. If a move/copy source path is clear but the target is a placeholder such as 目标目录 or 指定位置, still call move_file/copy_file and preserve that placeholder in target_path.",
             json!({
                 "type": "object",
                 "properties": {
@@ -412,11 +412,11 @@ pub fn tool_specs() -> Vec<ToolSpec> {
                     },
                     "target_path": {
                         "type": "string",
-                        "description": "移动或复制的目标目录或目标路径，例如 /Archive/。move_file/copy_file 必填。"
+                        "description": "移动或复制的目标目录或目标路径，例如 /Archive/。move_file/copy_file 必填；目标目录、目标位置、指定位置、对应目录等占位说法也要原样填写。"
                     },
                     "tag_name": {
                         "type": "string",
-                        "description": "文件标签名，例如 #合同、重要、#项目X。add_tag/remove_tag 必填，保留用户原文。"
+                        "description": "文件标签名，例如 #合同、重要、#项目X。add_tag/remove_tag 必填，保留用户原文；清空所有标签可填“全部”或“所有标签”。"
                     },
                     "new_name": {
                         "type": "string",
@@ -627,7 +627,7 @@ pub fn tool_specs() -> Vec<ToolSpec> {
         ),
         tool(
             "digital_media_subtitle",
-            "Submit a normalized media-subtitle request. Use for read-only subtitle candidate search or downloading and mounting a selected subtitle version for a title.",
+            "Submit one normalized media-subtitle request. Use exactly once per subtitle user request: search_subtitles for finding/checking subtitles, download_mount_subtitle for downloading or mounting a chosen subtitle.",
             json!({
                 "type": "object",
                 "properties": {
@@ -655,14 +655,14 @@ pub fn tool_specs() -> Vec<ToolSpec> {
         ),
         tool(
             "digital_video_playback",
-            "Submit a normalized video playback request. Use for video recommendations, title/director/actor/decade/genre/language-region playback, video playlists, recent video resume, favorites, and episode navigation.",
+            "Submit a normalized video playback request. Use for concrete video title/director/actor/decade playback and multi-condition video playback. Use play_video_combined whenever more than one constraint is present, such as actor+decade or director+region.",
             json!({
                 "type": "object",
                 "properties": {
                     "action": {
                         "type": "string",
                         "enum": ["play_recommended_video", "play_video_title", "play_video_by_director", "play_video_by_actor", "play_video_by_decade", "play_video_by_genre", "play_video_by_language_region", "play_video_combined", "play_video_playlist", "resume_video", "play_video_favorites", "next_episode", "previous_episode", "jump_episode"],
-                        "description": "影视泛推荐=play_recommended_video，仅限无标题/导演/演员/年代/类型/语言地区/片单/收藏限制；有类型/语言地区/导演/演员/年代时不要用推荐；多槽位用 play_video_combined；片单=play_video_playlist；最近播放=resume_video；收藏=play_video_favorites；下一集/上一集/跳集用 next_episode/previous_episode/jump_episode。"
+                        "description": "影视泛推荐=play_recommended_video，仅限无标题/导演/演员/年代/类型/语言地区/片单/收藏限制；有类型/语言地区/导演/演员/年代时不要用推荐；人物+年代/类型/地区等多槽位必须用 play_video_combined；片单=play_video_playlist；最近播放=resume_video；收藏=play_video_favorites；下一集/上一集/跳集用 next_episode/previous_episode/jump_episode。"
                     },
                     "title": { "type": "string", "description": "影视标题，例如《狂飙》《沙丘》。" },
                     "director": { "type": "string", "description": "导演名，例如诺兰、姜文、宫崎骏。" },
@@ -681,7 +681,7 @@ pub fn tool_specs() -> Vec<ToolSpec> {
         ),
         tool(
             "digital_video_recommendation",
-            "Submit a generic video recommendation request. Use only when the user has no concrete title, director, actor, genre, language/region, playlist, or collection slot and just wants any movie/show.",
+            "Submit one generic video recommendation request. Use only when the user has no concrete title, director, actor, genre, language/region, playlist, or collection slot and just wants any movie/show. Do not use for the single word 播放; that is current-playback resume.",
             json!({
                 "type": "object",
                 "properties": {
@@ -735,14 +735,14 @@ pub fn tool_specs() -> Vec<ToolSpec> {
         ),
         tool(
             "digital_video_collection_playback",
-            "Submit a video collection playback request. Use for video playlists, recent video resume, and video favorites.",
+            "Submit a video collection playback request. Use for video playlists, recent video resume, and video favorites. Use only when video is implied by words like 看、电影、剧、片、那部、刚才看的.",
             json!({
                 "type": "object",
                 "properties": {
                     "action": {
                         "type": "string",
                         "enum": ["play_video_playlist", "resume_video", "play_video_favorites"],
-                        "description": "播放片单=play_video_playlist；继续观看/最近播放=resume_video；我的收藏/收藏夹电影=play_video_favorites。"
+                        "description": "播放片单=play_video_playlist；继续观看/最近播放/上次那部/刚才看的电影=resume_video；我的收藏/收藏夹电影=play_video_favorites。无影视线索的通勤/收藏/最近播放通常是音乐集合。"
                     },
                     "playlist_name": { "type": "string", "description": "片单名称，例如我的片单、想看、周末家庭、经典回顾。" },
                     "query": { "type": "string", "description": "用户原始片单、最近播放或收藏请求。" }
@@ -770,14 +770,14 @@ pub fn tool_specs() -> Vec<ToolSpec> {
         ),
         tool(
             "digital_media_transport_control",
-            "Submit a media transport command shared by video and music. Use only for pause or resume of the current playback, not for recently played content.",
+            "Submit a media transport command shared by video and music. Use only for pause or resume of the current playback, not for recently played content. The single word 播放 means resume current playback.",
             json!({
                 "type": "object",
                 "properties": {
                     "action": {
                         "type": "string",
                         "enum": ["pause", "resume"],
-                        "description": "暂停/停一下=pause；继续播放/继续/播下去/接着放=resume。不要用 resume_video 或 resume_music 表示当前播放继续。"
+                        "description": "暂停/停一下=pause；继续播放/继续/播下去/接着放/单独说“播放”=resume。不要用 resume_video 或 resume_music 表示当前播放继续；也不要用本工具表示最近播放列表或上次那首歌。"
                     }
                 },
                 "required": ["action"],
@@ -786,14 +786,14 @@ pub fn tool_specs() -> Vec<ToolSpec> {
         ),
         tool(
             "digital_music_playback",
-            "Submit a normalized music playback request. Use for music recommendations, song/artist/album/decade/genre/language playback, playlists, recent playback, favorites, and track navigation.",
+            "Submit a normalized music playback request. Use for concrete song/artist/album/decade/genre/language playback and multi-condition music playback. Use play_music_combined whenever more than one music constraint is present.",
             json!({
                 "type": "object",
                 "properties": {
                     "action": {
                         "type": "string",
                         "enum": ["play_recommended_music", "play_music", "play_music_by_artist", "play_music_by_decade", "play_music_by_genre", "play_music_by_language", "play_music_combined", "play_music_playlist", "resume_music", "play_music_favorites", "next_track", "previous_track", "repeat_track"],
-                        "description": "音乐泛推荐=play_recommended_music，仅限无歌名/歌手/专辑/年代/类型/语言/歌单/收藏限制；有歌手/类型/语言/年代时不要用推荐；多槽位用 play_music_combined；歌单=play_music_playlist；最近播放=resume_music；收藏=play_music_favorites；下一首/上一首/再听一遍用 next_track/previous_track/repeat_track。"
+                        "description": "音乐泛推荐=play_recommended_music，仅限无歌名/歌手/专辑/年代/类型/语言/歌单/收藏限制；有歌手/类型/语言/年代时不要用推荐；90年代/80年代/最近的新歌用 play_music_by_decade；歌手+歌名/类型/语言/年代必须用 play_music_combined；歌单=play_music_playlist；最近播放=resume_music；收藏=play_music_favorites；下一首/上一首/再听一遍用 next_track/previous_track/repeat_track。"
                     },
                     "song_name": { "type": "string", "description": "歌曲名，例如青花瓷、孤勇者。" },
                     "artist": { "type": "string", "description": "歌手，例如周杰伦、王菲、BLACKPINK。" },
@@ -810,7 +810,7 @@ pub fn tool_specs() -> Vec<ToolSpec> {
         ),
         tool(
             "digital_music_recommendation",
-            "Submit a generic music recommendation request. Use only when the user has no concrete song, artist, playlist, genre, language, or decade slot and just wants any music.",
+            "Submit one generic music recommendation request. Use only when the user has no concrete song, artist, playlist, genre, language, or decade slot and just wants any music. Do not use when the user mentions 90年代、粤语、流行、周杰伦、歌单、红心、收藏.",
             json!({
                 "type": "object",
                 "properties": {
@@ -845,7 +845,7 @@ pub fn tool_specs() -> Vec<ToolSpec> {
         ),
         tool(
             "digital_music_language_playback",
-            "Submit a music playback request constrained by language. Use whenever the user names a music language such as 国语、粤语、英语、日语、韩语、西班牙语、法语、纯音乐, even if the wording sounds like a recommendation.",
+            "Submit a music playback request constrained by language. Use whenever the user names a music language such as 国语、粤语、英语、日语、韩语、西班牙语、法语、纯音乐 and there is no video cue. Bare requests like 播放粤语/来点粤语 default to music.",
             json!({
                 "type": "object",
                 "properties": {
@@ -863,16 +863,16 @@ pub fn tool_specs() -> Vec<ToolSpec> {
         ),
         tool(
             "digital_music_collection_playback",
-            "Submit a music collection playback request. Use for music playlists, recent music playback, and music favorites.",
+            "Submit a music collection playback request. Use for music playlists, recent music playback, and music favorites. Use for 上次那首歌、刚才听的歌、最近播放列表、上次没听完的歌; do not use track navigation for those.",
             json!({
                 "type": "object",
                 "properties": {
                     "action": {
                         "type": "string",
                         "enum": ["play_music_playlist", "resume_music", "play_music_favorites"],
-                        "description": "播放歌单=play_music_playlist；音乐最近播放=resume_music；收藏歌曲/红心歌曲=play_music_favorites。"
+                        "description": "播放歌单/通勤/睡前歌单=play_music_playlist；音乐最近播放/上次那首歌/刚才听的歌/上次没听完=resume_music；收藏歌曲/红心歌曲/喜欢的歌=play_music_favorites。"
                     },
-                    "playlist_name": { "type": "string", "description": "歌单名称，例如我的歌单、通勤、睡前、工作。" },
+                    "playlist_name": { "type": "string", "description": "歌单名称，例如我的歌单、通勤、睡前、工作。若用户写歌单\"通勤\"，只填 通勤，不要包含引号或整句。" },
                     "query": { "type": "string", "description": "用户原始歌单、最近播放或收藏请求。" }
                 },
                 "required": ["action"],
@@ -881,7 +881,7 @@ pub fn tool_specs() -> Vec<ToolSpec> {
         ),
         tool(
             "digital_music_track_control",
-            "Submit a music track navigation command. Use only for next track, previous track, skip, switch song, or repeat current track.",
+            "Submit a music track navigation command. Use only for next track, previous track, skip, switch song, or repeat current track. Do not use for 上次那首歌、刚才听的歌、最近播放; those are resume_music.",
             json!({
                 "type": "object",
                 "properties": {
@@ -1081,14 +1081,14 @@ pub fn tool_specs() -> Vec<ToolSpec> {
         ),
         tool(
             "digital_photo_album_search",
-            "Submit a normalized album-library query. Use for listing albums, listing shared albums, finding an existing album by name, or locating which album contains a natural-language photo target.",
+            "Submit a normalized album-library query. Prefer digital_photo_album for ordinary album lists, person albums, object albums, and creating albums. Use this search tool only for shared-album lists, exact album-name lookup, or locating which album contains a specific photo target.",
             json!({
                 "type": "object",
                 "properties": {
                     "action": {
                         "type": "string",
                         "enum": ["list_albums", "list_shared_albums", "search_album", "find_photo_album"],
-                        "description": "我有哪些相册=list_albums；分享出去的相册=list_shared_albums；查宝宝相册=search_album；猫的照片在哪个相册=find_photo_album。"
+                        "description": "兼容相册列表=list_albums，但普通列表优先用 digital_photo_album；分享出去的相册=list_shared_albums；按明确相册名查找=search_album；询问具体照片在哪个相册=find_photo_album。人物/物体相册不要用本工具。"
                     },
                     "album_query": {
                         "type": "string",
@@ -1137,14 +1137,14 @@ pub fn tool_specs() -> Vec<ToolSpec> {
         ),
         tool(
             "digital_security_event_query",
-            "Submit a normalized security event query. Use for person presence, human behavior, typed-person presence, vehicle entry/presence, license plate presence, package status, pet activity/presence/behavior, wild animals, smoke/fire, glass breaking, cough, and crying events. Always preserve time_query and camera_name; never use an area argument for this tool.",
+            "Submit a normalized security event query. Use for broad person presence, human behavior, typed-person presence, vehicle entry/presence, license plate presence, package status, pet activity/presence/behavior, wild animals, smoke/fire, glass breaking, cough, and crying events. Always preserve time_query and camera_name; never use an area argument for this tool when camera_name fits.",
             json!({
                 "type": "object",
                 "properties": {
                     "action": {
                         "type": "string",
                         "enum": ["person_presence", "human_behavior", "person_type_presence", "vehicle_entry", "vehicle_presence", "plate_presence", "package_query", "package_status", "pet_activity", "pet_presence", "pet_behavior", "wild_animal_detection", "smoke_fire_detection", "glass_break_detection", "cough_detection", "crying_detection"],
-                        "description": "人员存在=person_presence；徘徊/跌倒/翻越/入水/摔跤=human_behavior；陌生人/熟人/小孩等类型人存在=person_type_presence；车辆进出=vehicle_entry；车辆颜色/车型存在=vehicle_presence；车牌=plate_presence；快递查询=package_query，送达/丢失/取走=package_status；宠物活动/去哪/几次=pet_activity，宠物在不在/有没有=pet_presence，宠物跑出/翻越/入水/打架/跌倒=pet_behavior；野生动物/烟火/玻璃破碎/咳嗽/哭声用对应 detection。"
+                        "description": "人员存在=person_presence；徘徊/跌倒/翻越/入水/摔跤=human_behavior；陌生人/熟人/小孩等类型人存在/来过/几个=person_type_presence；车辆进出/经过=vehicle_entry；车辆颜色/车型/几辆车=vehicle_presence；车牌=plate_presence；快递查询=package_query，送达/丢失/取走=package_status；宠物活动/去哪/几次=pet_activity，宠物在不在/有没有=pet_presence，宠物跑出/翻越/入水/打架/跌倒/捣乱/上沙发=pet_behavior；野生动物/烟火/玻璃破碎/咳嗽/哭声用对应 detection。"
                     },
                     "camera_name": {
                         "type": "string",
@@ -1209,7 +1209,7 @@ pub fn tool_specs() -> Vec<ToolSpec> {
                     },
                     "sound_type": {
                         "type": "string",
-                        "description": "声音类型，例如“玻璃破碎”“摔东西”“打碎声”“咳嗽”“咳”“呛声”“宝宝哭”“小孩哭”“哭声”。"
+                        "description": "声音类型，例如“玻璃破碎”“摔东西”“打碎声”“咳嗽”“咳”“呛声”“宝宝哭”“小孩哭”“哭声”。glass_break_detection 必须填“玻璃破碎”。"
                     }
                 },
                 "required": ["action", "time_query", "camera_name"],
@@ -1218,7 +1218,7 @@ pub fn tool_specs() -> Vec<ToolSpec> {
         ),
         tool(
             "digital_security_person_type_query",
-            "Submit a normalized security query for typed-person presence. Use for checking whether a person type such as 陌生人、熟人、爸爸、妈妈、小孩、中年人、老年人 appeared in a camera or area. Do not use identity recognition for counting or presence of a person type in an area.",
+            "Submit a narrow security query for typed-person presence only when this narrow tool is explicitly a better fit than digital_security_event_query. For broad event tests, prefer digital_security_event_query action=person_type_presence.",
             json!({
                 "type": "object",
                 "properties": {
@@ -1238,7 +1238,7 @@ pub fn tool_specs() -> Vec<ToolSpec> {
         ),
         tool(
             "digital_security_vehicle_entry_query",
-            "Submit a normalized security query for vehicle entry/exit activity. Use for car coming, going, entering, exiting, passing through, or vehicle activity records.",
+            "Submit a narrow security query for vehicle entry/exit activity. Prefer digital_security_event_query action=vehicle_entry for broad event routing; use this only when a narrow vehicle-entry tool is explicitly desired.",
             json!({
                 "type": "object",
                 "properties": {
@@ -1257,7 +1257,7 @@ pub fn tool_specs() -> Vec<ToolSpec> {
         ),
         tool(
             "digital_security_vehicle_presence_query",
-            "Submit a normalized security query for vehicle presence, vehicle counts, color, or vehicle type. Do not use this for license plate queries.",
+            "Submit a narrow security query for vehicle presence, vehicle counts, color, or vehicle type. Prefer digital_security_event_query action=vehicle_presence for broad event routing. Do not use this for license plate queries.",
             json!({
                 "type": "object",
                 "properties": {
@@ -1399,7 +1399,7 @@ pub fn tool_specs() -> Vec<ToolSpec> {
         ),
         tool(
             "digital_security_identity_recognition",
-            "Submit a normalized security identity-recognition query. Use for checking whether a known person or a stranger appeared in a time window. Preserve camera_name for camera positions.",
+            "Submit a normalized security identity-recognition query. Use for simple known-person appeared checks and explicit stranger recognition. For generic typed-person event queries such as 陌生人有没有/几个/活动, prefer digital_security_event_query action=person_type_presence.",
             json!({
                 "type": "object",
                 "properties": {
@@ -1436,7 +1436,7 @@ pub fn tool_specs() -> Vec<ToolSpec> {
         ),
         tool(
             "digital_security_person_history",
-            "Submit a normalized security person history query. Use for checking whether a known person label such as dad, mom, or Zhang San appeared in a time window.",
+            "Submit a normalized security person history query. Use for detailed history, traces, lists, or timelines for a known person. For simple yes/no known-person appeared checks, prefer digital_security_identity_recognition.",
             json!({
                 "type": "object",
                 "properties": {
@@ -1463,7 +1463,7 @@ pub fn tool_specs() -> Vec<ToolSpec> {
         ),
         tool(
             "digital_security_identity_history",
-            "Submit a normalized security identity-category history query. Use for checking whether strangers, familiar people, or couriers appeared in a time window.",
+            "Submit a normalized security identity-category history query. Use for detailed history, traces, lists, or timelines for strangers, familiar people, or couriers. For simple person-type presence, prefer digital_security_event_query action=person_type_presence.",
             json!({
                 "type": "object",
                 "properties": {
@@ -1661,7 +1661,7 @@ pub fn tool_specs() -> Vec<ToolSpec> {
         ),
         tool(
             "digital_text_assistant",
-            "Submit a short-text language task. Use for summarization, translation, polishing, style rewrite, expansion, and compression of short text.",
+            "Submit a short-text language task. Use for summarization, translation, polishing, style rewrite, expansion, and compression of short text. Preserve the full user-provided text span exactly; do not strip leading phrases like 这是一个关于.",
             json!({
                 "type": "object",
                 "properties": {
@@ -1672,7 +1672,7 @@ pub fn tool_specs() -> Vec<ToolSpec> {
                     },
                     "text": {
                         "type": "string",
-                        "description": "待处理的短文本、句子、段落或标题。"
+                        "description": "待处理的短文本、句子、段落或标题。必须保留用户原文中的完整待处理文本，例如包含“这是一个关于...”的整句。"
                     },
                     "source_language": {
                         "type": "string",
@@ -1690,7 +1690,7 @@ pub fn tool_specs() -> Vec<ToolSpec> {
                         "type": "integer",
                         "minimum": 1,
                         "maximum": 2000,
-                        "description": "压缩目标字数，例如 200 字填 200。"
+                        "description": "压缩或扩写目标字数，例如“压到200字”“扩写到200字”都填 200。"
                     }
                 },
                 "required": ["action", "text"],
